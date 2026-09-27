@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% block title %}Join {{ t.name }}{% endblock %}
+{% block body %}
+<form class="card" method="post" action="/join/{{ code }}" style="max-width:480px;margin:2rem auto">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <h1>Join {{ t.name }}?</h1>
+  <p>Team in <a href="/events/{{ t.slug }}">{{ t.event }}</a> · {{ t.size }} of {{ t.max_team_size }} members.</p>
+  {% if t.size >= t.max_team_size %}<div class="note warn">This team is full.</div>{% endif %}
+  <div class="actions"><button class="btn primary" {% if t.size >= t.max_team_size %}disabled{% endif %}>Join team</button>
+    <a class="btn" href="/events/{{ t.slug }}">Cancel</a></div>
+</form>
+{% endblock %}

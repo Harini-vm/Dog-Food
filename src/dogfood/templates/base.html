@@ -13,12 +13,13 @@
     {% set p = request.url.path %}
     <a href="/projects" {% if p.startswith('/projects') %}aria-current="page"{% endif %}>Gallery</a>
     <a href="/" {% if p == '/' %}aria-current="page"{% endif %}>Events</a>
-    {% block nav %}{% endblock %}
+    {% if nav.judge %}<a href="/judge" {% if p.startswith('/judge') %}aria-current="page"{% endif %}>Judging</a>{% endif %}
+    {% if nav.organize %}<a href="/organize" {% if p.startswith('/organize') %}aria-current="page"{% endif %}>Organize</a>{% endif %}
   </nav>
   <div class="who">
     {% if me %}<span class="muted">{{ me.name }}</span>
       <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Log out</button></form>
-    {% else %}<a href="/login?next={{ request.url.path|urlencode }}">Log in</a>{% endif %}
+    {% else %}<a href="/login?next={{ request.url.path|urlencode }}">Log in</a><a href="/signup?next={{ request.url.path|urlencode }}">Sign up</a>{% endif %}
   </div>
 </div></header>
 <main id="main">

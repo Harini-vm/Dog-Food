@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% block title %}Results preview · {{ ev.name }}{% endblock %}
+{% block body %}
+<p><a href="/organize/{{ ev.slug }}#publish">← {{ ev.name }}</a></p>
+<h1>Results preview</h1>
+<p class="muted">Private to organizers. Method <code>{{ res.method }}</code> · panel mean {{ res.panel.mean }}, spread {{ res.panel.sd }}, {{ res.panel.reviews }} reviews.
+  {% if pub %}Published version {{ pub.version }} is frozen; this preview is live.{% endif %}</p>
+{% if res.flags %}<div class="note warn"><strong>{{ res.flags|length }} flag(s).</strong>
+  <ul>{% for f in res.flags %}<li>{{ f.kind|replace('_',' ') }}: {{ f.name or f.title }}, {{ f.detail }}</li>{% endfor %}</ul></div>{% endif %}
+<div class="card scroll"><table>
+  <thead><tr><th scope="col">Rank</th><th scope="col">Project</th><th scope="col">Track (rank)</th><th scope="col" class="num">Score</th>
+    <th scope="col" class="num">Raw average</th><th scope="col" class="num">Raw rank</th><th scope="col" class="num">Moved</th><th scope="col" class="num">Reviews</th></tr></thead>
+  <tbody>{% for r in res.ranking %}<tr><td>{{ r.rank }}</td><td>{{ r.title }}<br><small>{{ r.team }}</small></td>
+    <td>{{ r.track or '—' }} ({{ r.track_rank }})</td><td class="num">{{ '%.2f'|format(r.score) }}</td><td class="num">{{ '%.2f'|format(r.raw) }}</td>
+    <td class="num">{{ r.raw_rank }}</td><td class="num">{% if r.moved > 0 %}▲{{ r.moved }}{% elif r.moved < 0 %}▼{{ -r.moved }}{% else %}·{% endif %}</td>
+    <td class="num">{{ r.reviews }}{% if r.pending %} <small>(+{{ r.pending }} pending)</small>{% endif %}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% if res.unranked %}<p class="muted">Unranked (no reviews): {% for u in res.unranked %}{{ u.title }}{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+<h2>Judges</h2>
+<p class="muted">"Shift" is how much each review by that judge is moved up (+) or down (−) before the spread correction.</p>
+<div class="card scroll"><table>
+  <thead><tr><th scope="col">Judge</th><th scope="col" class="num">Reviews</th><th scope="col" class="num">Mean</th><th scope="col" class="num">Spread</th><th scope="col" class="num">Shift</th><th scope="col">Flag</th></tr></thead>
+  <tbody>{% for j in res.judges %}<tr><td>{{ j.name }}</td><td class="num">{{ j.reviews }}</td><td class="num">{{ j.mean }}</td><td class="num">{{ j.sd }}</td>
+    <td class="num">{{ '%+.2f'|format(j.shift) }}</td><td>{{ (j.flag or '')|replace('_',' ') }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

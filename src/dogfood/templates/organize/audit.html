@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block title %}Audit log · {{ ev.name }}{% endblock %}
+{% block body %}
+<p><a href="/organize/{{ ev.slug }}">← {{ ev.name }}</a></p>
+<h1>Audit log</h1>
+{% if ok %}<div class="note ok">Hash chain verified: all {{ n }} entries are intact.</div>
+{% else %}<div class="note bad">Hash chain broken at entry {{ bad_id }}. Someone changed the log outside the application.</div>{% endif %}
+<p class="muted">Every change is recorded in the same transaction as the change itself. Score values are never logged.</p>
+<div class="card scroll"><table>
+  <thead><tr><th scope="col">When (UTC)</th><th scope="col">Who</th><th scope="col">What</th><th scope="col">Subject</th><th scope="col">Detail</th></tr></thead>
+  <tbody>{% for r in rows %}<tr><td><small>{{ r.at|dt('%d %b %H:%M:%S') }}</small></td><td>{{ r.who }}</td><td><code>{{ r.action }}</code></td>
+    <td><small class="mono">{{ r.subject }}</small></td><td><small class="mono">{{ r.detail|tojson if r.detail else '' }}</small></td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% block title %}Organize{% endblock %}
+{% block body %}
+<h1>Your events</h1>
+<div class="grid">
+{% for e in events %}
+  <article class="card"><h2 style="margin-top:0"><a href="/organize/{{ e.slug }}">{{ e.name }}</a></h2>
+    <p class="muted" style="margin:0">{{ e.submitted }} submitted · {{ e.scored }} of {{ e.assigned }} reviews done</p>
+    <small>submissions close {{ e.closes_at|dt }}</small></article>
+{% else %}<p class="card muted">You do not organize any events yet.</p>{% endfor %}
+</div>
+<h2>Create an event</h2>
+<form class="card" method="post" action="/organize/events"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="row">
+    <div class="grow"><label for="n">Name</label><input id="n" name="name" required minlength="3" maxlength="120"></div>
+    <div class="grow"><label for="o">Submissions open (UTC, optional)</label><input id="o" name="opens_at" type="datetime-local"></div>
+    <div class="grow"><label for="c">Submissions close (UTC)</label><input id="c" name="closes_at" type="datetime-local" required></div>
+  </div>
+  <label for="d">Description</label><textarea id="d" name="description" maxlength="2000"></textarea>
+  <div class="row">
+    <div class="grow"><label for="t">Tracks (comma-separated)</label><input id="t" name="tracks" placeholder="AI, Climate, Health"></div>
+    <div><label for="s">Max team size</label><input id="s" name="max_team_size" type="number" min="1" max="20" value="4"></div>
+    <div><label for="r">Reviews per project</label><input id="r" name="reviews_per_project" type="number" min="1" max="20" value="3"></div>
+  </div>
+  <p class="muted">The rubric starts as functionality 40%, quality 35%, innovation 25%, each scored 1 to 5. You can change it on the event page.</p>
+  <div class="actions"><button class="btn primary">Create event</button></div>
+</form>
+{% endblock %}

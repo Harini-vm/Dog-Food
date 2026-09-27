@@ -59,3 +59,27 @@ th { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: 
 .scroll { overflow-x: auto; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* stage 3: dashboards, forms for judging */
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.stats { display: grid; gap: .8rem; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin: 1rem 0; }
+.stat b { display: block; font-size: 1.6rem; line-height: 1.1; } .stat span { color: var(--muted); font-size: .9rem; }
+.meter { height: .7rem; background: var(--panel-2); border-radius: 99px; overflow: hidden; }
+.meter span { display: block; height: 100%; background: var(--brand); border-radius: 99px; }
+.subnav { display: flex; gap: .3rem; flex-wrap: wrap; margin: .5rem 0 1rem; }
+.subnav a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 .8rem; border-radius: 99px;
+  background: var(--panel); border: 1px solid var(--line); text-decoration: none; color: var(--ink); }
+fieldset.scale { border: 0; padding: 0; margin: 1rem 0 0; }
+fieldset.scale legend { font-weight: 600; margin-bottom: .4rem; }
+fieldset.scale label { display: inline-block; margin: 0 .25rem .25rem 0; font-weight: 400; }
+fieldset.scale input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+fieldset.scale span { display: inline-flex; align-items: center; justify-content: center; min-width: 48px; min-height: 48px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--panel); cursor: pointer; font-weight: 600; }
+fieldset.scale input:checked + span { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+fieldset.scale input:focus-visible + span { outline: 3px solid var(--brand); outline-offset: 2px; }
+fieldset.checks { border: 1px solid var(--line); border-radius: 8px; margin-top: 1rem; }
+fieldset.checks label, label.inline { display: inline-flex; gap: .4rem; align-items: center; font-weight: 400; margin: .3rem 1rem .3rem 0; }
+fieldset.checks input, label.inline input { width: auto; min-height: auto; }
+.inline-form { display: flex; gap: .4rem; align-items: center; } .inline-form input { min-width: 8rem; }
+tr.top td:first-child { font-weight: 800; color: var(--brand); }
+details summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }

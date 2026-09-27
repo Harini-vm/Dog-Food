@@ -1,0 +1,126 @@
+{% extends "base.html" %}{% block title %}{{ ev.name }} · Organize{% endblock %}
+{% macro csrf_field() %}<input type="hidden" name="csrf" value="{{ csrf }}">{% endmacro %}
+{% block body %}
+<p><a href="/organize">← Your events</a> · <a href="/events/{{ ev.slug }}">Public page</a></p>
+<h1>{{ ev.name }}</h1>
+<nav class="subnav" aria-label="Sections">
+  <a href="#entries">Entries</a><a href="#judging">Judging</a><a href="#judges">Judges</a><a href="#rubric">Rubric</a>
+  <a href="#publish">Results</a><a href="#settings">Settings</a><a href="/organize/{{ ev.slug }}/assignments">Assignments</a>
+  <a href="/organize/{{ ev.slug }}/audit">Audit log</a>
+</nav>
+
+<section class="stats" aria-label="Summary">
+  <div class="card stat"><b>{{ counts.teams }}</b><span>teams ({{ counts.people }} people)</span></div>
+  <div class="card stat"><b>{{ counts.submitted }}</b><span>submitted</span></div>
+  <div class="card stat"><b>{{ counts.drafts }}</b><span>drafts</span></div>
+  <div class="card stat"><b>{{ counts.duplicates + counts.withdrawn }}</b><span>duplicate / withdrawn</span></div>
+  <div class="card stat"><b>{{ progress.pct }}%</b><span>reviews done ({{ progress.done }} / {{ progress.assigned }})</span></div>
+</section>
+<p>{% if open %}<span class="chip ok">submissions open</span> until {{ ev.closes_at|dt }}{% else %}<span class="chip">submissions closed</span> {{ ev.closes_at|dt }}{% endif %}
+  {% if pub %}<span class="chip brand">results published v{{ pub.version }}</span>{% endif %}</p>
+
+<h2 id="judging">Judging progress</h2>
+<div class="card stack">
+  <div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ progress.pct }}" aria-label="Reviews done"><span style="width:{{ progress.pct }}%"></span></div>
+  <p style="margin:0">Each submitted project needs <strong>{{ ev.reviews_per_project }}</strong> reviews. The planner fills gaps and never
+    touches existing assignments, so it is safe to run again after adding or removing judges.</p>
+  <form method="post" action="/organize/{{ ev.slug }}/assign" class="actions">{{ csrf_field() }}
+    <button class="btn primary" {% if pub %}disabled{% endif %}>Run the assignment planner</button>
+    <a class="btn" href="/organize/{{ ev.slug }}/assignments">Adjust by hand</a>
+    <a class="btn" href="/api/v1/export/scores.csv?event={{ ev.id }}">Download scores (CSV)</a></form>
+  {% if res.flags %}
+  <details open><summary><strong>{{ res.flags|length }} thing(s) to look at</strong></summary>
+    <ul>{% for f in res.flags[:40] %}<li><span class="chip {{ 'bad' if f.kind in ('flat_judge','straight_line') else 'warn' }}">{{ f.kind|replace('_',' ') }}</span>
+      {{ f.name or f.title }}: {{ f.detail }}</li>{% endfor %}</ul>
+    {% if res.flags|length > 40 %}<p class="muted">… and {{ res.flags|length - 40 }} more on the results preview.</p>{% endif %}
+  </details>{% endif %}
+</div>
+
+<h2 id="judges">Judges ({{ judges|length }})</h2>
+<div class="card scroll"><table>
+  <thead><tr><th scope="col">Judge</th><th scope="col">Tracks</th><th scope="col" class="num">Done</th><th scope="col">Pattern</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+  <tbody>{% for j in judges %}<tr><td>{{ j.name }}<br><small>{{ j.email }}{% if not j.active %} · invite not accepted{% endif %}</small></td>
+    <td>{{ j.tracks or 'any' }}</td><td class="num">{{ j.done }} / {{ j.assigned }}</td>
+    <td>{% if flags.get(j.id) == 'flat' %}<span class="chip bad">flat scorer</span>{% elif flags.get(j.id) %}<span class="chip warn">{{ flags.get(j.id)|replace('_',' ') }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td><form method="post" action="/organize/{{ ev.slug }}/judges/{{ j.id }}/remove">{{ csrf_field() }}<button class="btn" aria-label="Remove {{ j.name }}">Remove</button></form></td></tr>
+  {% else %}<tr><td colspan="5" class="muted">No judges yet.</td></tr>{% endfor %}</tbody>
+</table></div>
+<form class="card" method="post" action="/organize/{{ ev.slug }}/people" style="margin-top:1rem">{{ csrf_field() }}
+  <h3 style="margin-top:0">Invite a judge or co-organizer</h3>
+  <div class="row">
+    <div class="grow"><label for="je">Email</label><input id="je" name="email" type="email" required></div>
+    <div class="grow"><label for="jn">Name (optional)</label><input id="jn" name="name"></div>
+    <div><label for="jr">Role</label><select id="jr" name="role"><option value="judge">Judge</option><option value="organizer">Organizer</option></select></div>
+  </div>
+  {% if tracks %}<fieldset class="checks"><legend>Judge only these tracks (none = any track)</legend>
+    {% for t in tracks %}<label><input type="checkbox" name="tracks" value="{{ t.id }}"> {{ t.name }}</label>{% endfor %}</fieldset>{% endif %}
+  <div class="actions"><button class="btn primary">Invite</button></div>
+  <small>New people get a one-time link to set a password; no email server is needed. Organizers: {% for o in organizers %}{{ o.name }}{{ ', ' if not loop.last }}{% endfor %}.</small>
+</form>
+
+<h2 id="rubric">Rubric</h2>
+<form class="card" method="post" action="/organize/{{ ev.slug }}/rubric">{{ csrf_field() }}
+  <p class="muted" style="margin-top:0">Weights are relative (2/1/1 is the same as 50/25/25). They can change until results are published.
+    {% if scored %}The scale is fixed because {{ scored }} reviews already use it.{% endif %}</p>
+  <div class="scroll"><table><thead><tr><th scope="col">Criterion</th><th scope="col">Weight</th><th scope="col">Min</th><th scope="col">Max</th></tr></thead><tbody>
+  {% set total = rubric|sum(attribute='weight') %}
+  {% for c in rubric %}<tr>
+    <td><label class="visually-hidden" for="n_{{ c.key }}">Name</label><input id="n_{{ c.key }}" name="name_{{ c.key }}" value="{{ c.name }}"></td>
+    <td><label class="visually-hidden" for="w_{{ c.key }}">Weight</label><input id="w_{{ c.key }}" name="weight_{{ c.key }}" type="number" step="0.01" min="0.01" value="{{ '%g'|format(c.weight|float) }}">
+      <small>{{ (100 * c.weight / total)|round(1) }}%</small></td>
+    <td><input aria-label="Minimum" name="min_{{ c.key }}" type="number" value="{{ c.min_score }}" {% if scored %}readonly{% endif %}></td>
+    <td><input aria-label="Maximum" name="max_{{ c.key }}" type="number" value="{{ c.max_score }}" {% if scored %}readonly{% endif %}></td></tr>{% endfor %}
+  </tbody></table></div>
+  {% if not scored %}<label for="nk">Add a criterion (key)</label><input id="nk" name="new_key" placeholder="e.g. design">{% endif %}
+  <div class="actions"><button class="btn primary" {% if pub %}disabled{% endif %}>Save rubric</button></div>
+</form>
+
+<h2 id="publish">Results</h2>
+<div class="card stack">
+  <p style="margin:0">Top of the current preview ({{ res.method }}):</p>
+  <ol>{% for r in res.ranking[:5] %}<li>{{ r.title }} · {{ '%.2f'|format(r.score) }}</li>{% endfor %}</ol>
+  <div class="actions"><a class="btn" href="/organize/{{ ev.slug }}/results">Full preview with explanations</a></div>
+  {% if pub %}
+    <form method="post" action="/organize/{{ ev.slug }}/retract">{{ csrf_field() }}
+      <label for="why">Retract published results (reopens judging)</label><input id="why" name="reason" required placeholder="Why? This goes in the audit log.">
+      <div class="actions"><button class="btn">Retract</button></div></form>
+  {% elif open %}<p class="muted" style="margin:0">Results can be published after submissions close.</p>
+  {% else %}
+    <form method="post" action="/organize/{{ ev.slug }}/publish">{{ csrf_field() }}
+      {% if not res.complete %}<label class="inline"><input type="checkbox" name="force" value="1"> Some projects are missing reviews. Publish anyway.</label>{% endif %}
+      <div class="actions"><button class="btn primary">Publish results</button></div>
+      <small>Publishing freezes a snapshot and locks all scores. It can be retracted, with a reason, but never edited.</small></form>
+  {% endif %}
+</div>
+
+<h2 id="entries">Entries</h2>
+<p><a href="/projects?event={{ ev.slug }}">Public gallery</a> · withdraw an entry that breaks the rules, or restore one withdrawn by mistake.</p>
+<div class="card scroll"><table>
+  <thead><tr><th scope="col">Entry</th><th scope="col">Team</th><th scope="col">Status</th><th scope="col" class="num">Reviews</th><th scope="col"><span class="visually-hidden">Moderate</span></th></tr></thead>
+  <tbody>{% for p in entries %}<tr><td><a href="/projects/{{ p.id }}">{{ p.title }}</a>{% if p.duplicate_of %}<br><small>duplicate of {{ p.duplicate_of }}</small>{% endif %}</td>
+    <td>{{ p.team }}</td><td><span class="chip {{ {'submitted':'ok','draft':'warn','withdrawn':'bad'}.get(p.status, '') }}">{{ p.status }}</span></td>
+    <td class="num">{{ p.reviews }}</td>
+    <td>{% if not pub and p.status in ('submitted', 'withdrawn') %}
+      <form method="post" action="/organize/{{ ev.slug }}/projects/{{ p.id }}/status" class="inline-form">{{ csrf_field() }}
+        {% if p.status == 'submitted' %}<input type="hidden" name="status" value="withdrawn">
+          <input name="reason" aria-label="Reason for withdrawing {{ p.title }}" placeholder="reason" required>
+          <button class="btn">Withdraw</button>
+        {% else %}<input type="hidden" name="status" value="submitted"><button class="btn">Restore</button>{% endif %}
+      </form>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="5" class="muted">No entries yet.</td></tr>{% endfor %}</tbody>
+</table></div>
+
+<h2 id="settings">Settings</h2>
+<form class="card" method="post" action="/organize/{{ ev.slug }}/settings">{{ csrf_field() }}
+  <div class="row">
+    <div class="grow"><label for="sn">Name</label><input id="sn" name="name" value="{{ ev.name }}" maxlength="120"></div>
+    <div class="grow"><label for="so">Submissions open (UTC)</label><input id="so" name="opens_at" type="datetime-local" value="{{ ev.opens_at.strftime('%Y-%m-%dT%H:%M') if ev.opens_at else '' }}"></div>
+    <div class="grow"><label for="sc">Submissions close (UTC)</label><input id="sc" name="closes_at" type="datetime-local" required value="{{ ev.closes_at.strftime('%Y-%m-%dT%H:%M') }}"></div>
+    <div class="grow"><label for="sj">Judging closes (UTC, optional)</label><input id="sj" name="judging_closes_at" type="datetime-local" value="{{ ev.judging_closes_at.strftime('%Y-%m-%dT%H:%M') if ev.judging_closes_at else '' }}"></div>
+  </div>
+  <label for="sd">Description</label><textarea id="sd" name="description" maxlength="2000">{{ ev.description }}</textarea>
+  <div class="row"><div><label for="sm">Max team size</label><input id="sm" name="max_team_size" type="number" min="1" max="20" value="{{ ev.max_team_size }}"></div>
+    <div><label for="sr">Reviews per project</label><input id="sr" name="reviews_per_project" type="number" min="1" max="20" value="{{ ev.reviews_per_project }}"></div></div>
+  <div class="actions"><button class="btn primary">Save settings</button></div>
+</form>
+{% endblock %}

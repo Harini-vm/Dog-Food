@@ -87,3 +87,15 @@ def export_scores(request: Request, event: str | None = None):
         audit.log(conn, u, "export.scores", events[0] if len(events) == 1 else None, ",".join(events))
     return Response(text, media_type="text/csv; charset=utf-8",
                     headers={"Content-Disposition": 'attachment; filename="scores.csv"'})
+
+
+@router.get("/events/{event}/results", tags=["public"], summary="Published results (frozen snapshot)")
+def published_results(event: str):
+    from ..errors import not_found
+    from ..services import results
+    with db.tx() as conn:
+        ev = db.one(conn, "SELECT id FROM events WHERE id = %s OR slug = %s", (event, event))
+        snap = results.published(conn, ev["id"]) if ev else None
+    if snap is None:
+        raise not_found("results are not published", "not_published")
+    return {**snap["body"], "version": snap["version"], "sha256": snap["body_hash"]}

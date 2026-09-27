@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% block title %}Score {{ a.title }}{% endblock %}
+{% block body %}
+<p><a href="/judge">← My reviews</a></p>
+<div class="split">
+  <article class="card">
+    <p>{% if a.track %}<span class="chip brand">{{ a.track }}</span>{% endif %}
+       {% if a.status != 'submitted' %}<span class="chip warn">{{ a.status }}: this entry will not be ranked</span>{% endif %}</p>
+    <h1>{{ a.title }}</h1><p class="muted">by {{ a.team }} · {{ a.event }}</p>
+    <p>{{ a.summary }}</p>
+    {% if a.repo_url %}<a class="btn" href="{{ a.repo_url }}" rel="noopener nofollow" target="_blank">Open repository</a>{% endif %}
+  </article>
+  <form class="card" method="post" action="/judge/{{ a.id }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {% if nxt %}<input type="hidden" name="next" value="{{ nxt }}">{% endif %}
+    <h2 style="margin-top:0">Your score</h2>
+    {% if not open %}<div class="note warn">Judging is closed for this event. Your score is shown read-only.</div>{% endif %}
+    <fieldset {% if not open %}disabled{% endif %} style="border:0;margin:0;padding:0">
+    {% for c in rubric %}
+      <fieldset class="scale"><legend>{{ c.name }} <small>weight {{ '%g'|format(c.weight|float) }}</small></legend>
+        {% for v in range(c.min_score, c.max_score + 1) %}
+          <label><input type="radio" name="{{ c.key }}" value="{{ v }}" required {% if values.get(c.key) == v %}checked{% endif %}><span>{{ v }}</span></label>
+        {% endfor %}
+      </fieldset>
+    {% endfor %}
+    <label for="cm">Comment for the organizers <small>(optional, not shown to the team)</small></label>
+    <textarea id="cm" name="comment" maxlength="5000">{{ s.comment if s else '' }}</textarea>
+    <div class="actions"><button class="btn primary">{{ 'Save and next' if nxt else 'Save' }}</button></div>
+    </fieldset>
+    {% if s %}<small>Last saved {{ s.updated_at|dt }}</small>{% endif %}
+  </form>
+</div>
+{% endblock %}

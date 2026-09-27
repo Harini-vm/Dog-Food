@@ -46,7 +46,7 @@ def test_organizer_and_admin_can_read(api):
 
 
 def test_csv_export(api):
-    r = api(ORGANIZER).get("/api/v1/export/scores.csv")
+    r = api(ORGANIZER).get("/api/v1/export/scores.csv?event=evt_01")
     lines = r.text.splitlines()
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")
     assert lines[0].startswith("event_id,project_id") and len(lines) == 127   # header + 126 fixture reviews

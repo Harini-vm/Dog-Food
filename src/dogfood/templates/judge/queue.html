@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% block title %}My reviews{% endblock %}
+{% block body %}
+<h1>My reviews</h1>
+<div class="card">
+  <p style="margin:0 0 .4rem"><strong>{{ done }} of {{ total }}</strong> reviewed</p>
+  <div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="{{ total }}" aria-valuenow="{{ done }}" aria-label="Reviews done">
+    <span style="width:{{ (100 * done / total)|round|int if total else 0 }}%"></span></div>
+</div>
+{% if not rows %}<p class="card muted">No projects are assigned to you yet. The organizer assigns them after submissions close.</p>{% endif %}
+<div class="scroll" style="margin-top:1rem"><table class="card">
+  <thead><tr><th scope="col">Project</th><th scope="col">Track</th><th scope="col">Event</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Action</span></th></tr></thead>
+  <tbody>{% for r in rows %}<tr>
+    <td>{{ r.title }}{% if r.status != 'submitted' %} <span class="chip warn">{{ r.status }}</span>{% endif %}</td>
+    <td>{{ r.track or '—' }}</td><td>{{ r.event }}</td>
+    <td>{% if r.scored %}<span class="chip ok">scored</span>{% else %}<span class="chip warn">to do</span>{% endif %}</td>
+    <td><a class="btn {{ '' if r.scored else 'primary' }}" href="/judge/{{ r.id }}">{{ 'Review again' if r.scored else 'Score' }}</a></td>
+  </tr>{% endfor %}</tbody>
+</table></div>
+<p class="muted">You only ever see your own scores. Other judges' scores are not visible to you, and yours are not visible to them.</p>
+{% endblock %}

@@ -15,8 +15,14 @@ templates.env.filters["dt"] = lambda v, f="%d %b %Y, %H:%M UTC": v.strftime(f) i
 
 def page(request: Request, name: str, http_status: int = 200, **ctx):
     u = user(request)
+    nav = {"judge": False, "organize": False}
+    if u is not None:
+        from . import db
+        with db.tx() as conn:
+            got = {r["role"] for r in db.rows(conn, "SELECT DISTINCT role FROM memberships WHERE user_id = %s", (u.id,))}
+        nav = {"judge": "judge" in got, "organize": u.is_admin or "organizer" in got}
     flash = request.cookies.get("df_flash")
-    resp = templates.TemplateResponse(request, name, {"me": u, "csrf": (u.csrf if u else "") or "",
+    resp = templates.TemplateResponse(request, name, {"me": u, "csrf": (u.csrf if u else "") or "", "nav": nav,
                                                       "flash": json.loads(flash) if flash else None, **ctx},
                                       status_code=http_status)
     if flash:

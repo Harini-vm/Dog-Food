@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from .. import auth, authz, db
 from ..errors import forbidden, not_found
 from ..security import check_password
-from ..services import submissions
+from ..services import results, submissions
 from ..web import form_or_json, go, page, wants_json
 
 router = APIRouter(include_in_schema=False)
@@ -28,7 +28,30 @@ def event(request: Request, slug: str):
         tracks = db.rows(conn, "SELECT * FROM tracks WHERE event_id = %s ORDER BY name", (ev["id"],))
         me = auth.user(request)
         team = submissions.team_of(conn, me.id, ev["id"]) if me else None
-    return page(request, "event.html", ev=ev, tracks=tracks, team=team, open=submissions.is_open(ev))
+        members = db.rows(conn, """SELECT u.name, m.captain FROM team_members m JOIN users u ON u.id = m.user_id
+                                   WHERE m.team_id = %s ORDER BY m.captain DESC, u.name""", (team["id"],)) if team else []
+        captain = any(m["captain"] and m["name"] == me.name for m in members) if team else False
+        my_roles = authz.roles(conn, me, ev["id"])
+        entry = db.one(conn, "SELECT id, title, status FROM projects WHERE team_id = %s AND status IN "
+                             "('draft','submitted')", (team["id"],)) if team else None
+        published = results.published(conn, ev["id"]) is not None
+    return page(request, "event.html", ev=ev, tracks=tracks, team=team, members=members, captain=captain,
+                entry=entry, roles=my_roles, published=published, open=submissions.is_open(ev))
+
+
+@router.get("/events/{slug}/results")
+def event_results(request: Request, slug: str):
+    """Public once published. Shows the frozen snapshot, never a live recomputation."""
+    with db.tx() as conn:
+        ev = db.one(conn, "SELECT * FROM events WHERE slug = %s OR id = %s", (slug, slug)) or _missing()
+        snap = results.published(conn, ev["id"])
+    if snap is None:
+        if wants_json(request):
+            raise not_found("results are not published yet", "not_published")
+        return page(request, "results.html", 404, ev=ev, snap=None)
+    if wants_json(request):
+        return JSONResponse({**snap["body"], "version": snap["version"], "sha256": snap["body_hash"]})
+    return page(request, "results.html", ev=ev, snap=snap)
 
 
 @router.get("/projects")

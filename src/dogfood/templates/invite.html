@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% block title %}Accept invitation{% endblock %}
+{% block body %}
+<form class="card" method="post" action="/invite/{{ token }}" style="max-width:420px;margin:2rem auto">
+  <h1>You have been invited</h1>
+  <p class="muted">Choose a password to activate your account. This link works once.</p>
+  <label for="n">Your name</label><input id="n" name="name" autocomplete="name" maxlength="80">
+  <label for="p">Password</label><input id="p" name="password" type="password" autocomplete="new-password" minlength="8" required>
+  <div class="actions"><button class="btn primary" type="submit">Activate account</button></div>
+</form>
+{% endblock %}

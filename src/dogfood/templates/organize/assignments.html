@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% block title %}Assignments · {{ ev.name }}{% endblock %}
+{% block body %}
+<p><a href="/organize/{{ ev.slug }}#judging">← {{ ev.name }}</a></p>
+<h1>Assignments ({{ rows|length }})</h1>
+<form class="card row" method="post" action="/organize/{{ ev.slug }}/assignments"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="grow"><label for="j">Judge</label><select id="j" name="judge_id" required>{% for j in judges %}<option value="{{ j.id }}">{{ j.name }}</option>{% endfor %}</select></div>
+  <div class="grow"><label for="p">Project</label><select id="p" name="project_id" required>{% for p in projects %}<option value="{{ p.id }}">{{ p.title }}</option>{% endfor %}</select></div>
+  <button class="btn primary">Assign</button>
+</form>
+<p class="muted">Conflicts of interest are refused. A scored review cannot be unassigned.</p>
+<div class="card scroll"><table>
+  <thead><tr><th scope="col">Project</th><th scope="col">Judge</th><th scope="col">How</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Remove</span></th></tr></thead>
+  <tbody>{% for r in rows %}<tr><td>{{ r.title }}{% if r.status != 'submitted' %} <span class="chip warn">{{ r.status }}</span>{% endif %}</td><td>{{ r.judge }}</td>
+    <td><small>{{ 'imported' if r.batch == 'import' else ('by hand' if r.batch == 'manual' else 'planner') }}</small></td>
+    <td>{% if r.scored %}<span class="chip ok">scored</span>{% else %}<span class="chip warn">pending</span>{% endif %}</td>
+    <td>{% if not r.scored %}<form method="post" action="/organize/{{ ev.slug }}/assignments/{{ r.id }}/remove"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn">Unassign</button></form>{% endif %}</td></tr>
+  {% endfor %}</tbody>
+</table></div>
+{% endblock %}

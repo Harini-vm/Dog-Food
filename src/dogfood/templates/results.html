@@ -1,0 +1,24 @@
+{% extends "base.html" %}{% block title %}Results · {{ ev.name }}{% endblock %}
+{% block body %}
+<p><a href="/events/{{ ev.slug }}">← {{ ev.name }}</a></p>
+<h1>Results</h1>
+{% if not snap %}<p class="card">Results for {{ ev.name }} are not published yet.</p>
+{% else %}
+{% set b = snap.body %}
+<p class="muted">Published {{ snap.published_at|dt }} · version {{ snap.version }} ·
+  <a href="/api/v1/events/{{ ev.slug }}/results">JSON</a> · sha256 <code>{{ snap.body_hash[:16] }}…</code></p>
+<p class="muted">Scores are out of 100 after correcting for strict and lenient judges. <a href="#how">How we score</a></p>
+<div class="card scroll"><table>
+  <thead><tr><th scope="col">Rank</th><th scope="col">Project</th><th scope="col">Team</th><th scope="col">Track</th><th scope="col" class="num">Score</th><th scope="col" class="num">Reviews</th></tr></thead>
+  <tbody>{% for r in b.ranking %}<tr {% if r.rank <= 3 %}class="top"{% endif %}><td>{{ r.rank }}</td>
+    <td><a href="/projects/{{ r.project_id }}">{{ r.title }}</a></td><td>{{ r.team }}</td><td>{{ r.track or '—' }}</td>
+    <td class="num">{{ '%.2f'|format(r.score) }}</td><td class="num">{{ r.reviews }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% if b.unranked %}<p class="muted">Not ranked (no completed reviews): {% for u in b.unranked %}{{ u.title }}{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+<h2 id="how">How we score</h2>
+<p>Each review is turned into a number from 0 to 100 using the published rubric weights. Because some judges score everyone
+high and others everyone low, each judge's reviews are adjusted to the panel's average and spread, gently for judges with
+few reviews. A project's score is the average of its adjusted reviews plus one average review, so two lucky reviews do not
+beat five solid ones. Equal scores share a rank. Method: <code>{{ snap.method }}</code>.</p>
+{% endif %}
+{% endblock %}

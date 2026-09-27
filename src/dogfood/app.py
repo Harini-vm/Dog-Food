@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from . import __version__, db, seed
 from .auth import guard
 from .errors import HTTPError
-from .routes import api, public
+from .routes import api, judge, organize, people, public
 from .web import page, wants_json
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -30,6 +30,9 @@ app = FastAPI(title="DOGFOOD portal API", version=__version__, lifespan=lifespan
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 app.include_router(public.router)
 app.include_router(api.router)
+app.include_router(people.router)
+app.include_router(judge.router)
+app.include_router(organize.router)
 
 
 def _render(request: Request, status: int, code: str, message: str):
@@ -51,6 +54,8 @@ async def db_error(request: Request, e: psycopg.Error):
     state = e.sqlstate or ""
     if state == "DF001":
         return _render(request, 403, "submissions_closed", str(e.diag.message_primary))
+    if state in ("DF003", "DF004"):
+        return _render(request, 409, "results_locked", str(e.diag.message_primary))
     if state.startswith(("23", "22", "DF")):   # integrity / data errors / our own triggers
         return _render(request, 400, "invalid_data", "that would break a data rule, so nothing was saved")
     raise e
