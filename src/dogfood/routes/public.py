@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from .. import auth, db
+from .. import auth, authz, db
 from ..errors import forbidden, not_found
 from ..security import check_password
 from ..services import submissions
@@ -82,8 +82,7 @@ def project(request: Request, pid: str):
         p = db.one(conn, """SELECT p.*, t.name AS track, tm.name AS team, e.name AS event, e.slug
                             FROM projects p JOIN teams tm ON tm.id = p.team_id JOIN events e ON e.id = p.event_id
                             LEFT JOIN tracks t ON t.id = p.track_id WHERE p.id = %s""", (pid,)) or _missing()
-        mine = me and db.one(conn, "SELECT 1 FROM team_members WHERE team_id = %s AND user_id = %s", (p["team_id"], me.id))
-        if p["status"] != "submitted" and not mine:
+        if not authz.project_visible(conn, me, p):
             _missing()                                   # drafts are private; same answer as "no such project"
         members = db.rows(conn, """SELECT u.name FROM team_members m JOIN users u ON u.id = m.user_id
                                    WHERE m.team_id = %s ORDER BY m.captain DESC, u.name""", (p["team_id"],))

@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from . import __version__, db, seed
 from .auth import guard
 from .errors import HTTPError
-from .routes import public
+from .routes import api, public
 from .web import page, wants_json
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -29,6 +29,7 @@ app = FastAPI(title="DOGFOOD portal API", version=__version__, lifespan=lifespan
               openapi_url="/api/openapi.json", dependencies=[Depends(guard)])
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 app.include_router(public.router)
+app.include_router(api.router)
 
 
 def _render(request: Request, status: int, code: str, message: str):
