@@ -42,6 +42,10 @@
   </div>
 {% else %}<p class="card muted">Submissions are closed, so teams can no longer change.</p>{% endif %}
 
+<h2>Embed on your site</h2>
+<p class="muted">Paste this into any web page to show the projects (or <code>?view=results</code> for the results):</p>
+<input readonly aria-label="Embed code" value='&lt;iframe src="{{ request.base_url }}embed/{{ ev.slug }}" width="100%" height="480" style="border:0" title="{{ ev.name }} projects"&gt;&lt;/iframe&gt;'>
+
 <h2>Tracks</h2>
 <p>{% for t in tracks %}<a class="chip brand" href="/projects?event={{ ev.slug }}&track={{ t.id }}">{{ t.name }}</a> {% else %}<span class="muted">No tracks.</span>{% endfor %}</p>
 {% endblock %}

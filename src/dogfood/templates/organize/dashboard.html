@@ -6,7 +6,8 @@
 <nav class="subnav" aria-label="Sections">
   <a href="#entries">Entries</a><a href="#judging">Judging</a><a href="#judges">Judges</a><a href="#rubric">Rubric</a>
   <a href="#publish">Results</a><a href="#settings">Settings</a><a href="/organize/{{ ev.slug }}/assignments">Assignments</a>
-  <a href="/organize/{{ ev.slug }}/audit">Audit log</a>
+  <a href="/organize/{{ ev.slug }}/audit">Audit log</a><a href="/organize/{{ ev.slug }}/webhooks">Webhooks</a>
+  <a href="/organize/{{ ev.slug }}/certificates">Certificates</a><a href="/api/v1/events/{{ ev.id }}/export">Export JSON</a>
 </nav>
 
 <section class="stats" aria-label="Summary">
@@ -81,6 +82,9 @@
   <ol>{% for r in res.ranking[:5] %}<li>{{ r.title }} · {{ '%.2f'|format(r.score) }}</li>{% endfor %}</ol>
   <div class="actions"><a class="btn" href="/organize/{{ ev.slug }}/results">Full preview with explanations</a></div>
   {% if pub %}
+    <form method="post" action="/organize/{{ ev.slug }}/certificates" class="actions">{{ csrf_field() }}
+      <button class="btn primary">Issue signed certificates</button>
+      <a class="btn" href="/organize/{{ ev.slug }}/certificates">View certificates</a></form>
     <form method="post" action="/organize/{{ ev.slug }}/retract">{{ csrf_field() }}
       <label for="why">Retract published results (reopens judging)</label><input id="why" name="reason" required placeholder="Why? This goes in the audit log.">
       <div class="actions"><button class="btn">Retract</button></div></form>

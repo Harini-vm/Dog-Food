@@ -15,6 +15,11 @@ sys.path.insert(0, str(ROOT / "src"))
 os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL", "postgresql://postgres@localhost/dogfood_test")
 os.environ.setdefault("DOGFOOD_FIXTURES", str(ROOT / "fixtures.json"))
 os.environ["DOGFOOD_DEMO"] = "true"
+os.environ["DOGFOOD_WEBHOOK_ALLOW_PRIVATE"] = "true"      # test receivers run on 127.0.0.1
+os.environ["DOGFOOD_WEBHOOK_BACKOFF_SCALE"] = "0.02"     # retries after 0.1 s instead of 5 s
+os.environ["DOGFOOD_WEBHOOK_TIMEOUT"] = "1"
+import tempfile  # noqa: E402
+os.environ["DOGFOOD_DATA_DIR"] = tempfile.mkdtemp(prefix="dogfood-test-")
 
 s = socket.socket(); s.bind(("127.0.0.1", 0)); PORT = s.getsockname()[1]; s.close()
 BASE = f"http://127.0.0.1:{PORT}"

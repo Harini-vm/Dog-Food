@@ -1,0 +1,9 @@
+{% extends "base.html" %}{% block title %}API reference{% endblock %}
+{% block body %}
+<h1>API reference</h1>
+<p>Base URL <code>/api/v1</code>. Authenticate with <code>Authorization: Bearer &lt;token&gt;</code> (create one on <a href="/account">your account page</a>).
+  Errors are JSON: <code>{"error": "code", "message": "..."}</code>. A wrong token is always 401, a missing permission 403.
+  The raw specification is <a href="/api/openapi.json">/api/openapi.json</a> (OpenAPI 3). Organizer pages under <code>/organize/…</code> also accept JSON with a bearer token.</p>
+<div id="ops" class="stack"><p class="muted">Loading the specification…</p></div>
+<script src="/static/apidocs.js"></script>
+{% endblock %}

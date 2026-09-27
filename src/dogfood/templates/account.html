@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% block title %}Account{% endblock %}
+{% block body %}
+<h1>Your account</h1>
+<p class="muted">{{ me.name }} · {{ me.email }}</p>
+<h2>API tokens</h2>
+<p>Use a token as <code>Authorization: Bearer &lt;token&gt;</code>. See the <a href="/api/docs">API reference</a>.</p>
+{% if new %}<div class="note ok" role="status"><strong>Copy this token now. It is shown only once.</strong><br><code class="mono">{{ new }}</code></div>{% endif %}
+<form class="card row" method="post" action="/account/tokens"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="grow"><label for="tl">Label</label><input id="tl" name="label" maxlength="60" placeholder="e.g. my script"></div>
+  <button class="btn primary">Create token</button></form>
+<div class="card scroll" style="margin-top:1rem"><table><thead><tr><th scope="col">Label</th><th scope="col">Created</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Revoke</span></th></tr></thead>
+<tbody>{% for t in tokens %}<tr><td>{{ t.label }}</td><td>{{ t.created_at|dt }}</td><td>{% if t.revoked_at %}<span class="chip">revoked</span>{% else %}<span class="chip ok">active</span>{% endif %}</td>
+  <td>{% if not t.revoked_at %}<form method="post" action="/account/tokens/{{ t.id }}/revoke"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn">Revoke</button></form>{% endif %}</td></tr>
+{% else %}<tr><td colspan="4" class="muted">No tokens yet.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

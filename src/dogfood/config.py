@@ -17,3 +17,7 @@ DEMO = _flag("DOGFOOD_DEMO", "true")
 SEED = _flag("DOGFOOD_SEED", "true")
 SECURE_COOKIES = _flag("DOGFOOD_SECURE_COOKIES", "false")
 TRUST_PROXY = _flag("DOGFOOD_TRUST_PROXY", "false")
+WEBHOOK_ALLOW_PRIVATE = _flag("DOGFOOD_WEBHOOK_ALLOW_PRIVATE", "false")
+WEBHOOK_TIMEOUT = float(os.environ.get("DOGFOOD_WEBHOOK_TIMEOUT", "5"))
+WEBHOOK_BACKOFF_SCALE = float(os.environ.get("DOGFOOD_WEBHOOK_BACKOFF_SCALE", "1"))   # tests shrink the waits
+WEBHOOK_WORKER = _flag("DOGFOOD_WEBHOOK_WORKER", "true")

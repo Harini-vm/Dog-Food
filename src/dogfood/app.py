@@ -9,10 +9,10 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import __version__, db, seed
+from . import __version__, config, db, seed
 from .auth import guard
 from .errors import HTTPError
-from .routes import api, judge, organize, people, public, vote
+from .routes import api, integrations, judge, organize, people, public, vote
 from .web import page, wants_json
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -22,7 +22,14 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 async def lifespan(app):
     db.migrate()
     seed.run()
+    worker = None
+    if config.WEBHOOK_WORKER:
+        from .services.webhooks import Worker
+        worker = Worker()
+        worker.start()
     yield
+    if worker:
+        worker.stop.set()
 
 
 app = FastAPI(title="DOGFOOD portal API", version=__version__, lifespan=lifespan, docs_url=None, redoc_url=None,
@@ -35,6 +42,8 @@ app.include_router(judge.router)
 app.include_router(organize.router)
 app.include_router(vote.router)
 app.include_router(vote.api)
+app.include_router(integrations.api)
+app.include_router(integrations.router)
 
 
 def _render(request: Request, status: int, code: str, message: str):
@@ -58,7 +67,7 @@ async def db_error(request: Request, e: psycopg.Error):
         return _render(request, 403, "submissions_closed", str(e.diag.message_primary))
     if state == "DF005":
         return _render(request, 403, "voting_closed", str(e.diag.message_primary))
-    if state in ("DF003", "DF004"):
+    if state in ("DF003", "DF004", "DF006"):
         return _render(request, 409, "results_locked", str(e.diag.message_primary))
     if state.startswith(("23", "22", "DF")):   # integrity / data errors / our own triggers
         return _render(request, 400, "invalid_data", "that would break a data rule, so nothing was saved")
@@ -68,11 +77,14 @@ async def db_error(request: Request, e: psycopg.Error):
 @app.middleware("http")
 async def headers(request: Request, call_next):
     resp = await call_next(request)
+    embeddable = request.url.path.startswith("/embed/")      # the widget is the only page other sites may frame
     resp.headers.setdefault("X-Content-Type-Options", "nosniff")
     resp.headers.setdefault("Referrer-Policy", "same-origin")
-    resp.headers.setdefault("X-Frame-Options", "DENY")
+    if not embeddable:
+        resp.headers.setdefault("X-Frame-Options", "DENY")
     resp.headers.setdefault("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; "
-                            "img-src 'self' data:; frame-ancestors 'none'; form-action 'self'")
+                            "img-src 'self' data:; form-action 'self'; "
+                            + ("frame-ancestors *; script-src 'none'" if embeddable else "frame-ancestors 'none'"))
     return resp
 
 

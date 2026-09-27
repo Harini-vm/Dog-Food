@@ -1,4 +1,12 @@
-{% extends "base.html" %}{% block title %}Organize{% endblock %}
+{% extends "base.html" %}{% block title %}Organize{% if me.is_admin %}
+<h2>Import an event</h2>
+<form class="card" method="post" action="/organize/import" enctype="multipart/form-data"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <label for="imf">JSON file (the fixtures.json format, or a DOGFOOD export)</label><input id="imf" name="file" type="file" accept="application/json,.json" required>
+  <label class="inline"><input type="checkbox" name="as_copy" value="1"> Import as a copy (fresh ids; use this to import the same event twice)</label>
+  <div class="actions"><button class="btn primary">Import</button></div>
+  <small>Every row is checked before anything is written. A bad file changes nothing.</small></form>
+{% endif %}
+{% endblock %}
 {% block body %}
 <h1>Your events</h1>
 <div class="grid">
@@ -24,4 +32,12 @@
   <p class="muted">The rubric starts as functionality 40%, quality 35%, innovation 25%, each scored 1 to 5. You can change it on the event page.</p>
   <div class="actions"><button class="btn primary">Create event</button></div>
 </form>
+{% if me.is_admin %}
+<h2>Import an event</h2>
+<form class="card" method="post" action="/organize/import" enctype="multipart/form-data"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <label for="imf">JSON file (the fixtures.json format, or a DOGFOOD export)</label><input id="imf" name="file" type="file" accept="application/json,.json" required>
+  <label class="inline"><input type="checkbox" name="as_copy" value="1"> Import as a copy (fresh ids; use this to import the same event twice)</label>
+  <div class="actions"><button class="btn primary">Import</button></div>
+  <small>Every row is checked before anything is written. A bad file changes nothing.</small></form>
+{% endif %}
 {% endblock %}

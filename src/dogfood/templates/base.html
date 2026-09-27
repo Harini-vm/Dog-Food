@@ -17,7 +17,7 @@
     {% if nav.organize %}<a href="/organize" {% if here.startswith('/organize') %}aria-current="page"{% endif %}>Organize</a>{% endif %}
   </nav>
   <div class="who">
-    {% if me %}<span class="muted">{{ me.name }}</span>
+    {% if me %}<a href="/account">{{ me.name }}</a>
       <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Log out</button></form>
     {% else %}<a href="/login?next={{ request.url.path|urlencode }}">Log in</a><a href="/signup?next={{ request.url.path|urlencode }}">Sign up</a>{% endif %}
   </div>
@@ -26,6 +26,6 @@
   {% if flash %}<div class="note {{ flash.kind }}" role="status">{{ flash.text }}</div>{% endif %}
   {% block body %}{% endblock %}
 </main>
-<footer>DOGFOOD · open-source hackathon platform · times in UTC</footer>
+<footer>DOGFOOD · open-source hackathon platform · times in UTC · <a href="/api/docs">API</a></footer>
 </body>
 </html>

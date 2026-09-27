@@ -6,6 +6,7 @@ COPY requirements.txt requirements-dev.txt ./
 RUN pip install -r requirements-dev.txt
 COPY src ./src
 COPY tests ./tests
+COPY tools ./tools
 COPY fixtures.json run.py pyproject.toml .dogfood.toml ./
 RUN useradd --system --uid 10001 dogfood && mkdir -p /data && chown dogfood /data
 USER dogfood

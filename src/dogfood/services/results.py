@@ -178,18 +178,26 @@ def publish(conn, user, ev, force: bool = False) -> dict:
     conn.execute("UPDATE events SET results_published_at = now() WHERE id = %s", (ev["id"],))
     audit.log(conn, user, "results.publish", ev["id"], f"v{version}",
               {"hash": h, "forced": force and not res["complete"], "ranked": len(body["ranking"])})
+    from . import webhooks
+    webhooks.emit(conn, ev["id"], "results.published", {"version": version, "sha256": h,
+                                                          "top": body["ranking"][:3]})
     return {"version": version, "hash": h}
 
 
-def retract(conn, user, ev, reason: str) -> None:
+def retract(conn, user, ev, reason: str, force: bool = False) -> None:
     if not reason.strip():
         raise bad("say why the results are being retracted; it goes in the audit log")
     ev = db.one(conn, "SELECT * FROM events WHERE id = %s FOR UPDATE", (ev["id"],))
     if not ev["results_published_at"]:
         raise conflict("results are not published")
+    if db.one(conn, "SELECT 1 FROM certificates WHERE event_id = %s", (ev["id"],)) and not (force and user.is_admin):
+        raise conflict("signed certificates were issued from these results; only an admin can retract now",
+                       "certificates_issued")
     conn.execute("UPDATE results SET retracted_at = now() WHERE event_id = %s AND retracted_at IS NULL", (ev["id"],))
     conn.execute("UPDATE events SET results_published_at = NULL WHERE id = %s", (ev["id"],))
-    audit.log(conn, user, "results.retract", ev["id"], ev["id"], {"reason": reason.strip()[:500]})
+    audit.log(conn, user, "results.retract", ev["id"], ev["id"], {"reason": reason.strip()[:500], "forced": force})
+    from . import webhooks
+    webhooks.emit(conn, ev["id"], "results.retracted", {"reason": reason.strip()[:500]})
 
 
 def published(conn, event_id: str):

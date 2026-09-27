@@ -60,4 +60,7 @@ def save(conn, user, ev, data: dict, submit: bool) -> str:
             raise closed(ev)
         raise
     audit.log(conn, user, f"project.{status}", ev["id"], pid, {"title": title})
+    if status == "submitted" and not (live and live["status"] == "submitted"):
+        from . import webhooks
+        webhooks.emit(conn, ev["id"], "project.submitted", {"project_id": pid, "title": title, "team": team["name"]})
     return pid

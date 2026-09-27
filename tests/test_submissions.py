@@ -31,7 +31,7 @@ def test_fixture_duplicate_is_resolved(sql, api):
 
 
 def test_gallery_hides_duplicates_and_searches(api):
-    html = api().get("/projects").text
+    html = api().get("/projects?event=sample-hack-2026").text
     assert html.count("Dry Harbour") == 1
     assert "Glass Signal" in api().get("/projects?q=glass").text
     assert "Glass Signal" not in api().get("/projects?q=zzzz").text

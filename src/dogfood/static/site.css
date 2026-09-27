@@ -84,3 +84,7 @@ fieldset.checks input, label.inline input { width: auto; min-height: auto; }
 tr.top td:first-child { font-weight: 800; color: var(--brand); }
 details summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
 .comment { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 .3rem; }
+.certificate { text-align: center; padding: 3rem 1.5rem; border-width: 3px; }
+.certificate .big { font-size: 2rem; font-weight: 800; margin: .5rem 0; }
+body.embed main { padding: .8rem; } ul.plain { list-style: none; padding: 0; } ul.plain li { padding: .35rem 0; border-bottom: 1px solid var(--line); }
+@media print { header.bar, footer, .no-print { display: none; } .certificate { border: 3px double #000; } }

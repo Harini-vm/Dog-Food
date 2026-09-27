@@ -47,7 +47,7 @@ Tests run against a separate `dogfood_test` database and start a real server.
 - [x] Stage 2: judging: rubric with weights, assignments, scores, backend score isolation, CSV export (all 7 checks pass)
 - [x] Stage 3: organizer dashboard, teams with invite links, judge invitations, assignment planner, judge queue, normalized results, publishing (see [JUDGING.md](JUDGING.md))
 - [x] Stage 4: public voting (accounts or one-time email links), sealed tallies, personal ballot order, comments with moderation, rate limits (T3)
-- [ ] Stage 5: API, webhooks, certificates, widget, import/export (T4)
+- [x] Stage 5: public API with cursor paging and offline docs, personal tokens, signed webhooks with retries, Ed25519 certificates with an offline verifier, embeddable widget, validated import/export (T4)
 - [ ] Stage 6: tests, documentation, demo video
 
 License: MIT.

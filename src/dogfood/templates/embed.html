@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ ev.name }}</title><link rel="stylesheet" href="/static/site.css"></head>
+<body class="embed"><main>
+<h1 style="font-size:1.2rem">{{ ev.name }}{% if view == 'results' %}: results{% endif %}</h1>
+{% if view == 'results' %}
+  {% if snap %}<ol>{% for r in snap.body.ranking[:10] %}<li value="{{ r.rank }}"><a href="/projects/{{ r.project_id }}" target="_blank" rel="noopener">{{ r.title }}</a> <small>{{ r.team }} · {{ '%.1f'|format(r.score) }}</small></li>{% endfor %}</ol>
+  {% else %}<p class="muted">Results are not published yet.</p>{% endif %}
+{% else %}
+  <ul class="plain">{% for p in items %}<li><a href="/projects/{{ p.id }}" target="_blank" rel="noopener">{{ p.title }}</a> <small>{{ p.team }}{% if p.track %} · {{ p.track }}{% endif %}</small></li>
+  {% else %}<li class="muted">No projects yet.</li>{% endfor %}</ul>
+{% endif %}
+<p><small><a href="/events/{{ ev.slug }}" target="_blank" rel="noopener">Open on DOGFOOD</a></small></p>
+</main></body></html>

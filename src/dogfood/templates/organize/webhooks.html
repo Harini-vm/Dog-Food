@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% block title %}Webhooks · {{ ev.name }}{% endblock %}
+{% block body %}
+<p><a href="/organize/{{ ev.slug }}">← {{ ev.name }}</a></p>
+<h1>Webhooks</h1>
+<p class="muted">We POST JSON to your URL when an entry is submitted, results are published or retracted, and certificates are issued.
+  Each request is signed: header <code>X-Dogfood-Signature: t=&lt;time&gt;,v1=&lt;HMAC-SHA256(secret, "t.body")&gt;</code>.
+  Deduplicate on <code>X-Dogfood-Event-Id</code>; order by <code>sequence</code>. Failed deliveries are retried 6 times with growing waits.</p>
+<form class="card row" method="post" action="/organize/{{ ev.slug }}/webhooks"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="grow"><label for="wu">Receiver URL</label><input id="wu" name="url" type="url" required placeholder="https://example.org/hooks/dogfood"></div>
+  <button class="btn primary">Add webhook</button></form>
+<div class="card scroll" style="margin-top:1rem"><table><thead><tr><th scope="col">URL</th><th scope="col">Added</th><th scope="col"><span class="visually-hidden">Remove</span></th></tr></thead>
+<tbody>{% for h in hooks %}<tr><td class="mono">{{ h.url }}</td><td>{{ h.created_at|dt }}</td>
+  <td><form method="post" action="/organize/{{ ev.slug }}/webhooks/{{ h.id }}/remove"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn">Remove</button></form></td></tr>
+{% else %}<tr><td colspan="3" class="muted">No webhooks.</td></tr>{% endfor %}</tbody></table></div>
+{% if hooks %}<form method="post" action="/organize/{{ ev.slug }}/webhooks/ping" class="actions"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn">Send a test ping</button></form>{% endif %}
+<h2>Recent deliveries</h2>
+<div class="card scroll"><table><thead><tr><th scope="col">#</th><th scope="col">Type</th><th scope="col">Status</th><th scope="col" class="num">Attempts</th><th scope="col">Last result</th></tr></thead>
+<tbody>{% for d in deliveries %}<tr><td class="num">{{ d.sequence }}</td><td><code>{{ d.type }}</code><br><small class="mono">{{ d.envelope }}</small></td>
+  <td><span class="chip {{ {'delivered':'ok','failed':'bad'}.get(d.status, 'warn') }}">{{ d.status }}</span></td><td class="num">{{ d.attempts }}</td>
+  <td><small>{{ d.last_status or '' }} {{ d.last_error or '' }}{% if d.status == 'pending' %} · next {{ d.next_at|dt('%H:%M:%S') }}{% endif %}</small></td></tr>
+{% else %}<tr><td colspan="5" class="muted">Nothing sent yet.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

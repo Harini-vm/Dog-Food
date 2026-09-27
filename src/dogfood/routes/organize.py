@@ -251,7 +251,8 @@ async def retract(request: Request, slug: str):
     data = await form_or_json(request)
     with db.tx() as conn:
         ev = _event(conn, me, slug)
-        results.retract(conn, me, ev, data.get("reason", ""))
+        results.retract(conn, me, ev, data.get("reason", ""),
+                        force=str(data.get("force", "")).lower() in ("1", "true", "on", "yes"))
     return _done(request, f"/organize/{slug}#publish", "Results retracted. Judging is open again.")
 
 
