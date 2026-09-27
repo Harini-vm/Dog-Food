@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block title %}{{ ev.name }}{% endblock %}
+{% block body %}
+<h1>{{ ev.name }}</h1>
+<p>{% if open %}<span class="chip ok">submissions open</span>{% else %}<span class="chip">submissions closed</span>{% endif %}
+   <span class="muted">closes {{ ev.closes_at|dt }}</span></p>
+{% if ev.description %}<p>{{ ev.description }}</p>{% endif %}
+<div class="actions">
+  <a class="btn primary" href="/projects?event={{ ev.slug }}">Browse the gallery</a>
+  {% if team %}<a class="btn" href="/projects/new?event={{ ev.slug }}">Your team's entry ({{ team.name }})</a>{% endif %}
+</div>
+<h2>Tracks</h2>
+<p>{% for t in tracks %}<a class="chip brand" href="/projects?event={{ ev.slug }}&track={{ t.id }}">{{ t.name }}</a> {% endfor %}</p>
+{% endblock %}

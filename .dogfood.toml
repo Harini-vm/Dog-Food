@@ -1,0 +1,21 @@
+# Where the DOGFOOD acceptance checker finds things. Run: python3 run.py .dogfood.toml
+[portal]
+base_url = "http://localhost:8080"
+
+[tiers]
+claimed = ["T1"]
+pitch = "A self-hosted hackathon platform built around fair, transparent judging."
+
+[auth]
+# Demo tokens, created at boot when DOGFOOD_DEMO=true (the docker-compose default).
+organizer   = "Authorization: Bearer df_organizer_demo"
+judge_a     = "Authorization: Bearer df_judge_a_demo"
+judge_b     = "Authorization: Bearer df_judge_b_demo"
+participant = "Authorization: Bearer df_participant_demo"
+
+[routes]
+gallery      = "/projects"
+submit       = "/projects/new"
+judge_scores = "/api/v1/judge/scores"
+peer_scores  = "/api/v1/judges/jdg_24/scores"
+csv_export   = "/api/v1/export/scores.csv"

@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% block title %}Events{% endblock %}
+{% block body %}
+<h1>Hackathons, judged fairly</h1>
+<p class="muted">Submit, judge and publish on one self-hosted platform.</p>
+<div class="grid">
+{% for e in events %}
+  <article class="card"><h2 style="margin-top:0"><a href="/events/{{ e.slug }}">{{ e.name }}</a></h2>
+    <p class="muted">{{ e.n }} projects · submissions close {{ e.closes_at|dt }}</p></article>
+{% else %}<p class="card">No events yet.</p>{% endfor %}
+</div>
+{% endblock %}

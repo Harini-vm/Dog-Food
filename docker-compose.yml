@@ -1,0 +1,22 @@
+# docker compose up  ->  http://localhost:8080, seeded from fixtures.json, no internet needed at runtime.
+name: dogfood
+services:
+  db:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: dogfood, POSTGRES_PASSWORD: dogfood, POSTGRES_DB: dogfood, TZ: UTC }
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U dogfood"], interval: 2s, retries: 30 }
+  app:
+    build: .
+    depends_on: { db: { condition: service_healthy } }
+    ports: ["8080:8080"]
+    environment:
+      DATABASE_URL: postgresql://dogfood:dogfood@db:5432/dogfood
+      TEST_DATABASE_URL: postgresql://dogfood:dogfood@db:5432/dogfood_test
+      DOGFOOD_BASE_URL: http://localhost:8080
+      DOGFOOD_DEMO: "true"           # fixed demo credentials for the checker; turn off for real use
+      DOGFOOD_SECRET_KEY: change-me
+    volumes: [appdata:/data]
+volumes: { pgdata: {}, appdata: {} }

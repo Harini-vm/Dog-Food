@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% block title %}Log in{% endblock %}
+{% block body %}
+<form class="card" method="post" action="/login" style="max-width:420px;margin:2rem auto">
+  <h1>Log in</h1>
+  {% if error %}<div class="note bad" role="alert">{{ error }}</div>{% endif %}
+  <input type="hidden" name="next" value="{{ next }}">
+  <label for="e">Email</label><input id="e" name="email" type="email" autocomplete="username" required value="{{ email or '' }}">
+  <label for="p">Password</label><input id="p" name="password" type="password" autocomplete="current-password" required>
+  <div class="actions"><button class="btn primary" type="submit">Log in</button></div>
+</form>
+{% endblock %}

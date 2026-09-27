@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}DOGFOOD{% endblock %} · DOGFOOD</title>
+<link rel="stylesheet" href="/static/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar"><div class="in">
+  <a class="brand" href="/">DOGFOOD</a>
+  <nav class="main" aria-label="Main">
+    {% set p = request.url.path %}
+    <a href="/projects" {% if p.startswith('/projects') %}aria-current="page"{% endif %}>Gallery</a>
+    <a href="/" {% if p == '/' %}aria-current="page"{% endif %}>Events</a>
+    {% block nav %}{% endblock %}
+  </nav>
+  <div class="who">
+    {% if me %}<span class="muted">{{ me.name }}</span>
+      <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Log out</button></form>
+    {% else %}<a href="/login?next={{ request.url.path|urlencode }}">Log in</a>{% endif %}
+  </div>
+</div></header>
+<main id="main">
+  {% if flash %}<div class="note {{ flash.kind }}" role="status">{{ flash.text }}</div>{% endif %}
+  {% block body %}{% endblock %}
+</main>
+<footer>DOGFOOD · open-source hackathon platform · times in UTC</footer>
+</body>
+</html>
