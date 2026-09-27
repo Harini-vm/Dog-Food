@@ -3,13 +3,35 @@ portal: http://localhost:8080
 claimed: T1 T2 T3 T4
 fixtures: fixtures.json
 
-T1  gallery is public ................. PASS
-T1  project from fixtures shown ....... PASS
-T1  closed event refuses submissions .. PASS
-T2  judge sees own scores ............. PASS
-T2  judge cannot see peer scores ...... PASS
-T2  participant blocked ............... PASS
-T2  csv export works .................. PASS
+T1  gallery is public ................. FAIL
+       GET http://localhost:8080/projects
+       no auth header
+       got no response, wanted 200
+T1  project from fixtures shown ....... FAIL
+       GET http://localhost:8080/projects
+       looked for any of these fixture project titles: 'Glass Signal', 'Small Meadow', 'Deep Compass'
+       none of them appeared in the response body
+       if your gallery paginates, make sure page one is what this route returns
+T1  closed event refuses submissions .. FAIL
+       POST http://localhost:8080/projects/new
+       sent as participant; the fixture event closed 2026-03-01T18:00:00Z
+       got no response, wanted 4xx
+T2  judge sees own scores ............. FAIL
+       GET http://localhost:8080/api/v1/judge/scores
+       sent as judge_a
+       got no response, wanted 200
+T2  judge cannot see peer scores ...... FAIL
+       GET http://localhost:8080/api/v1/judges/jdg_24/scores
+       sent as judge_b; this is the url that returns judge_a's scores
+       got no response, wanted 401 or 403
+T2  participant blocked ............... FAIL
+       GET http://localhost:8080/api/v1/judge/scores
+       sent as participant
+       got no response, wanted 401 or 403
+T2  csv export works .................. FAIL
+       GET http://localhost:8080/api/v1/export/scores.csv
+       sent as organizer
+       got no response, wanted 200
 
-claimed T1 T2 T3 T4, verified T1 T2
-note: claimed but not verified: T3 T4
+claimed T1 T2 T3 T4, verified nothing
+note: claimed but not verified: T1 T2 T3 T4
