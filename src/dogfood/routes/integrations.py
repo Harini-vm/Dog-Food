@@ -216,8 +216,10 @@ async def certificate_verify(request: Request):
         data = await request.json()
     except ValueError:
         raise bad("send JSON {record, signature}")
+    if not isinstance(data, dict):
+        raise bad("send a JSON object {record, signature}")
     with db.tx() as conn:
-        return certificates.verify(conn, (data or {}).get("record"), (data or {}).get("signature"))
+        return certificates.verify(conn, data.get("record"), data.get("signature"))
 
 
 @router.get("/.well-known/dogfood-keys.json")

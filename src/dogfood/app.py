@@ -63,6 +63,8 @@ async def http_error(request: Request, e: HTTPError):
 async def db_error(request: Request, e: psycopg.Error):
     """A database rule caught something: a clean 4xx, never a 500 with a stack trace."""
     state = e.sqlstate or ""
+    if isinstance(e, psycopg.DataError):          # e.g. a NUL byte, which Postgres text cannot hold
+        return _render(request, 400, "invalid_data", "that input contains characters that cannot be stored")
     if state == "DF001":
         return _render(request, 403, "submissions_closed", str(e.diag.message_primary))
     if state == "DF005":
@@ -72,6 +74,14 @@ async def db_error(request: Request, e: psycopg.Error):
     if state.startswith(("23", "22", "DF")):   # integrity / data errors / our own triggers
         return _render(request, 400, "invalid_data", "that would break a data rule, so nothing was saved")
     raise e
+
+
+@app.middleware("http")
+async def no_nul_bytes(request: Request, call_next):
+    """A NUL byte can never be stored in Postgres text; refuse it at the door instead of deep inside."""
+    if "\x00" in request.url.path or "%00" in str(request.url.query) or "%00" in request.url.path:
+        return JSONResponse({"error": "invalid_data", "message": "NUL bytes are not allowed"}, status_code=400)
+    return await call_next(request)
 
 
 @app.middleware("http")

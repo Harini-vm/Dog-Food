@@ -25,8 +25,9 @@ def _voter(conn, request, ev, create=True):
     """An account voter if logged in, else an email voter from a voting-link session."""
     me = auth.user(request)
     if me is not None:
-        vid = voting.user_voter(conn, ev["id"], me.id) if create else db.val(
-            conn, "SELECT id FROM voters WHERE event_id = %s AND user_id = %s", (ev["id"], me.id))
+        vid = voting.user_voter(conn, ev["id"], me.id, me.email) if create else db.val(
+            conn, "SELECT id FROM voters WHERE event_id = %s AND (user_id = %s OR email_key = %s)",
+            (ev["id"], me.id, voting.email_key(me.email)))
         return vid, None
     v = voting.session_voter(conn, request.cookies.get(COOKIE), ev["id"])
     return (v["id"], v["csrf"]) if v else (None, None)
@@ -137,7 +138,7 @@ def api_ballot(request: Request, event: str):
         ev = _event(conn, event)
         if voting.state(ev) != "open":
             raise forbidden("voting is not open", "voting_closed")
-        vid = voting.user_voter(conn, ev["id"], me.id)
+        vid = voting.user_voter(conn, ev["id"], me.id, me.email)
         items = voting.ballot(conn, ev, vid)
         return {"votes_left": ev["votes_per_voter"] - voting.used(conn, vid), "projects": items}
 
@@ -147,7 +148,7 @@ def api_vote(request: Request, event: str, body: VoteIn):
     me = authz.need_login(auth.user(request))
     with db.tx() as conn:
         ev = _event(conn, event)
-        vid = voting.user_voter(conn, ev["id"], me.id)
+        vid = voting.user_voter(conn, ev["id"], me.id, me.email)
         ratelimit.hit("vote", vid)                 # the same bucket as the ballot page
         ratelimit.hit("vote_net", ratelimit.client(request))
         return voting.cast(conn, vid, body.project_id)
@@ -158,7 +159,7 @@ def api_unvote(request: Request, event: str, project_id: str):
     me = authz.need_login(auth.user(request))
     with db.tx() as conn:
         ev = _event(conn, event)
-        return voting.withdraw(conn, voting.user_voter(conn, ev["id"], me.id), project_id)
+        return voting.withdraw(conn, voting.user_voter(conn, ev["id"], me.id, me.email), project_id)
 
 
 @api.get("/events/{event}/tally", summary="Vote counts (403 tallies_sealed until voting closes)")

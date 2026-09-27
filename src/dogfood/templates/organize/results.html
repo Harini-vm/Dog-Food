@@ -13,12 +13,27 @@
     <span><strong>{{ f.name or f.title }}</strong> <span class="muted">{{ f.detail }}</span></span></li>{% endfor %}</ul></details></div>{% endif %}
 <div class="card scroll"><table class="standings">
   <thead><tr><th scope="col">Rank</th><th scope="col">Project</th><th scope="col">Track (rank)</th><th scope="col" class="num">Score</th>
-    <th scope="col" class="num">Raw average</th><th scope="col" class="num">Raw rank</th><th scope="col" class="num">Moved</th><th scope="col" class="num">Reviews</th></tr></thead>
+    <th scope="col" class="num">Raw average</th><th scope="col" class="num">Raw rank</th><th scope="col" class="num">Moved</th><th scope="col" class="num">Reviews</th><th scope="col" class="num">Head to head</th></tr></thead>
   <tbody>{% for r in res.ranking %}<tr class="{{ 'podium' if r.rank <= 3 }}"><td class="place">{{ r.rank }}</td><td>{{ r.title }}<br><small>{{ r.team }}</small></td>
     <td>{{ r.track or '—' }} ({{ r.track_rank }})</td><td class="num">{{ '%.2f'|format(r.score) }}</td><td class="num">{{ '%.2f'|format(r.raw) }}</td>
     <td class="num">{{ r.raw_rank }}</td><td class="num">{% if r.moved > 0 %}<span class="move-up" aria-label="up {{ r.moved }}">▲{{ r.moved }}</span>{% elif r.moved < 0 %}<span class="move-down" aria-label="down {{ -r.moved }}">▼{{ -r.moved }}</span>{% else %}<span class="muted">·</span>{% endif %}</td>
-    <td class="num">{{ r.reviews }}{% if r.pending %} <small>(+{{ r.pending }} pending)</small>{% endif %}</td></tr>{% endfor %}</tbody>
+    <td class="num">{{ r.reviews }}{% if r.pending %} <small>(+{{ r.pending }} pending)</small>{% endif %}</td>
+    <td class="num">{% set h = pw.scores.get(r.project_id) %}{% if h %}{{ '%.1f'|format(h.score) }} <small>#{{ h.rank }} · {{ h.comparisons }}×</small>{% else %}<span class="muted">·</span>{% endif %}</td></tr>{% endfor %}</tbody>
 </table></div>
+<section class="block" id="pairwise" style="margin-top:var(--s6)">
+  <div class="block-head"><h2>Pairwise cross-check</h2><span class="muted fig">{{ pw.decided }} / {{ pw.total }} comparisons answered</span></div>
+  {% if not pw.decided %}<p class="card muted">No head-to-head answers yet. Create comparisons from the dashboard's Pairwise section.</p>
+  {% else %}<div class="card stack">
+    <p>In <strong class="fig">{{ pw.agree }} of {{ pw.agree + pw.against }}</strong> decided head-to-heads, judges picked the entry the rubric ranks higher{% if pw.decided > pw.agree + pw.against %} ({{ pw.decided - pw.agree - pw.against }} too close to call){% endif %}.
+       {% if pw.tau is not none %}Rank agreement (Kendall τ) between the two rankings: <strong class="fig">{{ '%.2f'|format(pw.tau) }}</strong>.
+       {% else %}<span class="muted">A full rank correlation needs about 3 answers per entry; collect more before reading the ranking as a whole.</span>{% endif %}
+       The "Head to head" column shows each entry's modelled chance of beating an average entry.</p>
+    {% if pw.disagreements %}<p class="eyebrow">Where head-to-head disagrees with the rubric</p>
+      <ul class="flags">{% for d in pw.disagreements[:15] %}<li><span class="chip warn">+{{ d.margin|int }}</span>
+        <span>Judges preferred <strong>{{ titles.get(d.preferred, d.preferred) }}</strong> over <strong>{{ titles.get(d.over, d.over) }}</strong>, which the rubric ranks higher.</span></li>{% endfor %}</ul>
+    {% else %}<p class="muted">No disagreements: every head-to-head result matches the rubric order.</p>{% endif %}
+  </div>{% endif %}
+</section>
 {% if res.unranked %}<p class="muted">Unranked (no reviews): {% for u in res.unranked %}{{ u.title }}{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
 <h2>Judges</h2>
 <p class="muted">"Shift" is how much each review by that judge is moved up (+) or down (−) before the spread correction.</p>

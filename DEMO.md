@@ -43,6 +43,10 @@ Show the terminal with `docker compose up` and the banner, then http://localhost
 
    "JUDGING.md explains every number."
 
+   Optional (20 s): on the dashboard, **Pairwise mode → Create comparisons**. As the judge, answer one
+   "which is better?" page. The preview then shows how often head-to-head agrees with the rubric.
+   "Two independent rankings, so we know where to look before publishing."
+
 ## 3:10 – 4:10 Publish
 
 1. For time, use the fixture event: its deadline has already passed. Click **Publish results**
@@ -64,4 +68,4 @@ Show the terminal with `docker compose up` and the banner, then http://localhost
 ## 4:45 – 5:00 Close
 
 "Everything you saw is in the repo: README, ARCHITECTURE, DATA-MODEL, JUDGING, THREAT-MODEL, and
-96 tests. Thanks!"
+132 tests. Thanks!"

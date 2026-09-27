@@ -136,9 +136,10 @@ The preview and dashboard flag the following. Flags never change a score; a pers
 | split panel | adjusted reviews of one project differ by > 40 points | 7 projects |
 | under-reviewed | fewer reviews than the event's target | 8 projects with 2 of 3 |
 
-A flat judge needs no special handling in the maths. Their spread is near zero, so their reviews
-land near the panel mean and barely move any ranking. The flag tells the organizer why that judge's
-opinion "didn't count".
+A flat judge needs no special handling in the maths. All of their reviews become the same adjusted
+value, so they add no ordering between the projects that judge saw. Shrinkage keeps the shared shift
+moderate. The flag tells the organizer why that judge's opinion "didn't count", and
+`tests/test_normalization_proof.py` checks this behaviour.
 
 ## 8. Privacy while judging
 
@@ -168,7 +169,55 @@ confirm explicitly; the audit log records `forced: true`.
 retracted, never deletes it, and reopens judging. Publishing again creates version 2. Every version
 stays in the database.
 
-## 10. Limits we know about
+## 10. Proof that the correction helps
+
+`tools/normalization_proof.py` simulates 500 events shaped like the fixture, where every project has a
+known true quality. It ranks them with the portal's own code, and the full report is in
+[docs/normalization-proof.md](docs/normalization-proof.md). Headline:
+
+- Our ranking is closer to the truth than raw averages in **410 of 500** events (Spearman ρ 0.870 vs 0.839).
+- It is closer than a plain z-score in 462 of 500 (ρ 0.787). Without shrinkage, a z-score *hurts*.
+- A sweep over K picks **K = 3** as best.
+- The project prior C barely changes accuracy. It is a fairness choice, and the report says so.
+
+`tests/test_normalization_proof.py` re-runs a smaller version on every test run, so a change that
+makes the maths worse fails the build.
+
+## 11. Pairwise mode: a second, independent ranking
+
+People are bad at absolute scales ("is this a 3 or a 4?") and good at comparisons ("which of these two
+is better?"). Pairwise mode collects the second kind of answer and builds a ranking from it that does
+not depend on the rubric at all.
+
+- **Which pairs:** the ones the rubric ranking is least sure about. Entries next to each other in
+  the current ranking come first, then those one or two places apart, preferring pairs compared least
+  so far. The same hard rules apply as for reviews: no conflicts of interest, track limits respected,
+  and a judge never sees the same pair twice (a database constraint). Running it again only tops up.
+- **Left or right:** which entry is shown on the left varies per judge and pair (a keyed hash), so no
+  entry benefits from always being seen first.
+- **Model:** Bradley–Terry, P(i beats j) = pᵢ / (pᵢ + pⱼ), fitted with the MM algorithm. A draw counts
+  half. Every entry also plays one virtual draw against an "average entry". That keeps an entry that
+  won every comparison from getting an infinite strength, and it pulls rarely compared entries
+  toward average (the same idea as the project prior). An entry's pairwise score is its modelled
+  chance of beating an average entry.
+- **What organizers see:**
+  - how often judges, head to head, picked the entry the rubric ranks higher;
+  - a rank correlation (Kendall τ), shown only once there are enough answers (about 3 per entry) to
+    mean something;
+  - the exact pairs where head-to-head disagrees with the rubric.
+- **What it does not do:** it does not replace the published ranking. The rubric ranking is what the
+  rules promised participants. Pairwise is evidence for the organizers: where the two agree, publish
+  with confidence; where they disagree, look at those entries again.
+- **Privacy and locking:**
+  - a judge sees only their own comparisons;
+  - the audit log records that a comparison was answered, never which side won;
+  - comparisons lock with the scores when results are published (DF004).
+
+Tests: `tests/test_pairwise.py` checks that Bradley–Terry recovers a known order from noisy answers,
+that an undefeated entry stays finite, that pairs follow the rules, peer answers are refused, and the
+lock holds.
+
+## 12. Limits we know about
 
 - With very few reviews per judge, no method can fully separate "strict judge" from "judge who got
   weak projects". Shrinkage makes the correction cautious rather than confident.

@@ -42,7 +42,7 @@ Our own run is in `acceptance-report.txt`.
 docker compose exec app pytest -q
 ```
 
-96 tests against a real server and a real Postgres (a separate `dogfood_test` database), including
+132 tests against a real server and a real Postgres (a separate `dogfood_test` database), including
 concurrency races, direct API attacks on every UI-only restriction, webhook retries against a live
 receiver, and certificate verification with the offline tool.
 
@@ -80,6 +80,15 @@ receiver, and certificate verification with the offline tool.
 - Ed25519-signed certificates that verify offline (`tools/verify_record.py`).
 - Embeddable widget.
 - Validated import and export that round-trips.
+
+## Bonus challenges
+
+| bonus | where |
+|---|---|
+| **Normalization Proof** | [docs/normalization-proof.md](docs/normalization-proof.md): 500 simulated events with a known truth, scored by the portal's own code. Our ranking beats raw averages in 410 of 500 and plain z-scores in 462 of 500; K = 3 is chosen by a sweep. Reproduce with `python tools/normalization_proof.py` |
+| **Pairwise Mode** | Judges answer "which of these two is better?" for close calls. A Bradley–Terry model gives a second, independent ranking, checked against the rubric in the results preview ([JUDGING.md §11](JUDGING.md)) |
+| **Threat Model** | [THREAT-MODEL.md](THREAT-MODEL.md) |
+| **API First** | Every action is available over `/api/v1` with bearer tokens, documented offline at `/api/docs` (OpenAPI 3). The acceptance checker itself drives the portal through the API |
 
 ## Documentation
 
@@ -121,5 +130,6 @@ The project was built in stages inside the hackathon window, one commit per stag
 5. API, tokens, webhooks, certificates, widget, import/export (T4).
 6. Documentation, cross-feature tests, cleanup.
 7. Interface: paper-and-ink design system, the Seal, organizer rail and timeline, judge scorecard, bundled IBM Plex fonts (SIL OFL).
+8. Bonus challenges: normalization proof (simulation using the portal's own code) and pairwise mode (Bradley–Terry).
 
 License: MIT.

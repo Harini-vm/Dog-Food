@@ -87,6 +87,15 @@ def update_settings(conn, user, ev, data: dict) -> None:
         raise bad("voting must open before it closes")
     if v_close and not v_open:
         raise bad("set when voting opens too")
+    if db.val(conn, "SELECT count(*) FROM votes WHERE event_id = %s", (ev["id"],)):
+        # Counts are sealed until voting closes. Removing the vote, or reopening it after the counts
+        # were visible, would let anyone see (and chase) the counts mid-vote.
+        now = datetime.now(timezone.utc)
+        was_closed = ev["voting_closes_at"] is not None and ev["voting_closes_at"] <= now
+        if not v_open:
+            raise conflict("votes have been cast; voting can be closed early but not removed", "votes_exist")
+        if was_closed and (v_close is None or v_close > now):
+            raise conflict("voting has closed and counts are visible; it cannot be reopened", "votes_exist")
     new = {"name": (data.get("name") or ev["name"]).strip()[:120],
            "description": (data.get("description", ev["description"]) or "").strip()[:2000],
            "opens_at": opens, "closes_at": closes, "judging_closes_at": judging,
@@ -162,6 +171,13 @@ def invite(conn, user, ev, email: str, role: str, tracks=(), name: str = "") -> 
     if role not in ("judge", "organizer"):
         raise bad("role must be judge or organizer")
     uid = ensure_user(conn, email, name.strip())
+    pending = not db.val(conn, "SELECT password_hash FROM users WHERE id = %s FOR UPDATE", (uid,))
+    others = db.val(conn, "SELECT count(*) FROM memberships WHERE user_id = %s AND event_id <> %s", (uid, ev["id"]))
+    if pending and others and not user.is_admin:
+        # This account waits for another event's activation link. Adding a role here would let whoever
+        # holds a link for it inherit our role (or let us inherit theirs), so we wait until it is active.
+        raise conflict("this person has a pending invitation from another event; invite them again once they "
+                       "have activated their account, or ask the platform admin", "pending_elsewhere")
     conn.execute("INSERT INTO memberships VALUES (%s, %s, %s) ON CONFLICT DO NOTHING", (ev["id"], uid, role))
     known = {t["id"] for t in db.rows(conn, "SELECT id FROM tracks WHERE event_id = %s", (ev["id"],))}
     if role == "judge":
@@ -171,7 +187,10 @@ def invite(conn, user, ev, email: str, role: str, tracks=(), name: str = "") -> 
             conn.execute("INSERT INTO judge_tracks VALUES (%s, %s, %s) ON CONFLICT DO NOTHING", (ev["id"], uid, t))
         refresh_conflicts(conn, ev["id"])
     link = None
-    if not db.val(conn, "SELECT password_hash FROM users WHERE id = %s", (uid,)):
+    # A one-time link sets the account's password, so it is only issued when this event "owns" the
+    # account: it is not activated yet AND every role it has is in this event. Otherwise an organizer
+    # of one event could take over a pending judge of another event by inviting them.
+    if pending:
         raw = new_token(24)
         conn.execute("INSERT INTO invitations VALUES (%s, %s, %s, %s, %s, now(), %s, NULL)",
                      (digest(raw), ev["id"], uid, role, user.id, datetime.now(timezone.utc) + timedelta(days=14)))
@@ -204,10 +223,22 @@ def accept_invite(conn, raw: str, name: str, password: str):
     inv = db.one(conn, "SELECT * FROM invitations WHERE token_hash = %s FOR UPDATE", (digest(raw),))
     if inv is None or inv["used_at"] or inv["expires_at"] < datetime.now(timezone.utc):
         raise bad("this invitation link is invalid, used or expired; ask the organizer for a new one", "bad_invite")
+    if db.val(conn, "SELECT password_hash FROM users WHERE id = %s FOR UPDATE", (inv["user_id"],)):
+        # An invitation activates an account once. It is never a password reset.
+        raise bad("this account is already active; log in instead", "already_active")
+    # Checked again at the moment of use: if another event has since given this account a role, an
+    # organizer-issued link could be used to take over that role. Only an admin's link can activate
+    # an account that more than one event depends on.
+    shared = db.val(conn, "SELECT count(*) FROM memberships WHERE user_id = %s AND event_id <> %s",
+                    (inv["user_id"], inv["event_id"]))
+    issuer_admin = inv["created_by"] and db.val(conn, "SELECT is_admin FROM users WHERE id = %s", (inv["created_by"],))
+    if shared and not issuer_admin:
+        raise bad("this account is also used by another event, so only an admin can activate it; "
+                  "ask the organizer to contact the platform admin", "shared_account")
     if len(password) < 8:
         raise bad("password must be at least 8 characters")
     conn.execute("UPDATE users SET password_hash = %s, name = coalesce(nullif(%s, ''), name) WHERE id = %s",
                  (hash_password(password), name.strip()[:80], inv["user_id"]))
-    conn.execute("UPDATE invitations SET used_at = now() WHERE token_hash = %s", (inv["token_hash"],))
+    conn.execute("UPDATE invitations SET used_at = now() WHERE user_id = %s AND used_at IS NULL", (inv["user_id"],))
     audit.log(conn, None, "invite.accept", inv["event_id"], inv["user_id"])
     return inv

@@ -35,6 +35,18 @@ Every row names a policy and a test in `tests/`. Run all of them with
 | rewriting a published snapshot | DF003 | same |
 | retract | reason required; reopens judging; creates a new version on republish | same |
 
+## Pairwise mode
+
+| case | policy | test |
+|---|---|---|
+| judge on a team gets a pair with their own entry | never generated | `test_pairwise.py::test_generated_pairs_follow_the_rules` |
+| same pair twice for one judge; re-running the generator | impossible (UNIQUE); the generator tops up only | same |
+| judge answers someone else's comparison / names an entry not in the pair | 403 / 400 | `test_judges_answer_only_their_own` |
+| who won, in the audit log | never recorded | same |
+| answer after publishing, via the API or in SQL | 403 `judging_closed` / DF004 | `test_comparisons_lock_with_results` |
+| an entry that won every comparison | finite strength (virtual draw against average) | `test_undefeated_entry_gets_a_finite_strength_and_ties_count_half` |
+| too few answers for a meaningful rank correlation | τ not shown; plain agreement count shown instead | `test_preview_shows_the_cross_check` |
+
 ## Voting, comments, abuse (T3)
 
 | case | policy | test |
@@ -95,3 +107,25 @@ Every row names a policy and a test in `tests/`. Run all of them with
    `test_sliding_window_edges`.
 4. The webhook sender first held one transaction for a whole batch, so one slow receiver stalled all
    others. It now uses one delivery per transaction.
+
+## Findings from an independent adversarial review (all fixed, each with a regression test)
+
+Before the code freeze the code was handed to a separate reviewer with one instruction: break it. Every
+finding below is fixed, and `tests/test_review_fixes.py` holds one test per finding.
+
+| severity | finding | fix |
+|---|---|---|
+| critical | An organizer of event B could invite a not-yet-activated judge of event A, receive the one-time link, and take the account over. An old unused link could also reset an active account's password. A second review pass also found the reverse order (attacker invites first) | While an account is pending activation for one event, no other event can add a role to it (409 `pending_elsewhere`; the admin can). A link is refused if the account has meanwhile gained roles elsewhere, never works on an active account, and accepting one cancels the account's other open links |
+| high | A logged-in person got 403 on the voting-link, invitation and login forms, which had no CSRF field | CSRF fields added |
+| medium | One person could vote once with their account and again with an email link: two budgets | A voter is identified by the (keyed hash of the) email address on both paths. Migration 008 |
+| medium | An organizer could reveal sealed counts mid-vote by clearing the voting times | Voting cannot be removed, or reopened after closing, once votes exist (409 `votes_exist`) |
+| medium | Withdraw-then-restore could turn a *draft* into a submitted entry after the deadline | Only submitted entries can be withdrawn; only entries that were submitted can be restored |
+| medium | Webhook SSRF check only at creation, and redirects were followed | No redirects; the address is re-checked at send time |
+| low | The admin's Organize page had the import form inside `<title>` | Template fixed |
+| low | JSON numbers, objects, lists, or an uploaded file where text was expected caused 500s | Every input is normalized to text before the handlers see it |
+| low | A NUL byte in any input, a non-object JSON body to certificate verify, or a malformed flash cookie caused 500s | NUL bytes refused at the door; database data errors become 400; body and cookie validated |
+| low | Webhook address check could be bypassed by DNS rebinding or NAT64 addresses | The host is resolved once, checked (including NAT64 and IPv4-mapped addresses), and the connection goes to exactly that address |
+
+Also tightened: the team captain is found by user id, not name; the judge API lists only events the
+person still judges; team names are unique per event in the database, not just in the app.
+

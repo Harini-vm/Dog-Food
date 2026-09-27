@@ -30,7 +30,8 @@ def event(request: Request, slug: str):
         team = submissions.team_of(conn, me.id, ev["id"]) if me else None
         members = db.rows(conn, """SELECT u.name, m.captain FROM team_members m JOIN users u ON u.id = m.user_id
                                    WHERE m.team_id = %s ORDER BY m.captain DESC, u.name""", (team["id"],)) if team else []
-        captain = any(m["captain"] and m["name"] == me.name for m in members) if team else False
+        captain = bool(db.val(conn, "SELECT captain FROM team_members WHERE team_id = %s AND user_id = %s",
+                              (team["id"], me.id))) if team else False
         my_roles = authz.roles(conn, me, ev["id"])
         entry = db.one(conn, "SELECT id, title, status FROM projects WHERE team_id = %s AND status IN "
                              "('draft','submitted')", (team["id"],)) if team else None

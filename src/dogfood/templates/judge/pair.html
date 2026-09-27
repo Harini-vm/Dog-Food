@@ -1,0 +1,31 @@
+{% extends "base.html" %}{% from "_ui.html" import seal %}{% block title %}Head to head{% endblock %}
+{% block body %}
+<p class="crumbs"><a href="/judge#pairs">← My reviews</a> · {{ ev.name }}</p>
+<div class="page-head"><div><p class="eyebrow">Pairwise mode</p><h1>Which entry is better overall?</h1></div>
+  {% if not open %}<div>{{ seal("Judging is closed", "read-only", "stamp") }}</div>{% endif %}</div>
+<p class="muted" style="max-width:46rem">Don't score them; just compare. Go with your overall judgement across functionality, quality and
+  innovation. Choose "too close to call" only if you really cannot separate them.</p>
+<form method="post" action="/judge/pairs/{{ c.id }}">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% if nxt %}<input type="hidden" name="next" value="{{ nxt }}">{% endif %}
+  <fieldset class="versus" {% if not open %}disabled{% endif %}>
+    <legend class="visually-hidden">Choose the better entry</legend>
+    {% for p in (left, right) %}
+    <label class="card contender">
+      <input type="radio" name="choice" value="{{ p.id }}" required {% if chosen == p.id %}checked{% endif %}>
+      <span class="eyebrow">{{ p.track or 'No track' }}</span>
+      <span class="name">{{ p.title }}</span>
+      <span class="muted">by {{ p.team }}</span>
+      <span class="summary">{{ p.summary or 'No summary given.' }}</span>
+      {% if p.repo_url %}<a href="{{ p.repo_url }}" target="_blank" rel="noopener nofollow">Repository ↗</a>{% endif %}
+      <span class="pick">This one is better</span>
+    </label>
+    {% if loop.first %}<div class="vs" aria-hidden="true">vs</div>{% endif %}
+    {% endfor %}
+  </fieldset>
+  <div class="actions" style="justify-content:center">
+    <label class="inline"><input type="radio" name="choice" value="tie" {% if chosen == 'tie' %}checked{% endif %} {% if not open %}disabled{% endif %}> Too close to call</label>
+    <button class="btn primary" {% if not open %}disabled{% endif %}>{{ 'Save and next' if nxt else 'Save' }}</button>
+  </div>
+</form>
+{% endblock %}

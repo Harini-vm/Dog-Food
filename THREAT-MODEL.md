@@ -64,6 +64,15 @@ requests directly. **We assume every attacker uses curl, not our UI.**
   gets 429 until the window passes. Legitimate users can wait; attackers lose their throughput.
 - Account takeover via signup: an email that was imported or invited cannot be claimed by signing
   up (`use_invite`). Only the invitation link can activate it.
+- Account takeover via invitations. Links go to organizers, because no mail server is required, so
+  the rules keep an organizer's reach inside their own event:
+  - While an account is pending activation for one event, other organizers cannot add roles to it.
+  - A link is refused if the account has meanwhile gained a role elsewhere.
+  - A link never works on an active account.
+  - Accepting a link cancels the account's other open links.
+  - The admin can resolve shared cases.
+
+  An independent review found this hole before the freeze (docs/edge-cases.md).
 - Session theft: cookies are `HttpOnly`, `SameSite=Lax` and `Secure` when `DOGFOOD_SECURE_COOKIES` is
   on. Sessions are server-side and die on logout. Tokens and sessions are stored as digests, so a
   database leak does not leak credentials.
@@ -82,11 +91,14 @@ requests directly. **We assume every attacker uses curl, not our UI.**
 ### Server-side request forgery (webhooks)
 
 An organizer sets a webhook URL. Without checks, that would let an organizer make our server call
-`db:5432` or a cloud metadata endpoint. Receivers must resolve to **public** addresses.
+`db:5432` or a cloud metadata endpoint. Receivers must resolve to **public** addresses. This is checked when the webhook is added and again
+before every send. Redirects are never followed, because a public receiver could otherwise bounce the
+request inward.
 `DOGFOOD_WEBHOOK_ALLOW_PRIVATE=true` exists for local testing only.
 
-Accepted risk: DNS rebinding between our check and the request. A full fix needs pinning the
-resolved IP per request. It is on the list, not done.
+The host is resolved once and the connection goes to exactly that checked address (TLS still verifies
+the real host name), so DNS rebinding cannot swap in an internal address. NAT64 (`64:ff9b::/96`)
+and IPv4-mapped addresses are unwrapped before the check.
 
 ### Denial of service
 

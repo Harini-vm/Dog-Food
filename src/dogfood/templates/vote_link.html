@@ -1,7 +1,8 @@
 {% extends "base.html" %}{% block title %}Voting link{% endblock %}
 {% block body %}
 <form class="card" method="post" action="/vote/{{ token }}" style="max-width:420px;margin:2rem auto">
-  <h1>Ready to vote</h1><p class="muted">This link works once. Continue to open your ballot.</p>
+  <h1>Ready to vote</h1>
+  <input type="hidden" name="csrf" value="{{ csrf }}"><p class="muted">This link works once. Continue to open your ballot.</p>
   <div class="actions"><button class="btn primary">Open my ballot</button></div>
 </form>
 {% endblock %}

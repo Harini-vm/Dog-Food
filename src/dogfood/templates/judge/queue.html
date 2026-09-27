@@ -20,5 +20,16 @@
   </tr>{% endfor %}</tbody>
 </table></div>
 {% endif %}
+{% if pairs %}
+<section class="block" id="pairs" style="margin-top:var(--s6)">
+  <div class="block-head"><h2>Head to head</h2><span class="muted"><span class="fig">{{ pairs_open }}</span> still to compare</span></div>
+  <div class="card scroll"><table>
+    <thead><tr><th scope="col">Comparison</th><th scope="col">Event</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Action</span></th></tr></thead>
+    <tbody>{% for c in pairs %}<tr><td>{{ c.title_a }} <span class="muted">vs</span> {{ c.title_b }}</td><td>{{ c.event }}</td>
+      <td>{% if c.winner %}<span class="chip ok">answered</span>{% else %}<span class="chip warn">to do</span>{% endif %}</td>
+      <td class="num"><a class="btn {{ 'quiet' if c.winner else 'primary' }}" href="/judge/pairs/{{ c.id }}">{{ 'Change' if c.winner else 'Compare' }}</a></td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endif %}
 <p class="muted" style="margin-top:var(--s4)"><small>You only ever see your own scores. Other judges cannot see yours, and you cannot see theirs; the server enforces this, not the page.</small></p>
 {% endblock %}

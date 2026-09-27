@@ -50,6 +50,34 @@ def _mean_var(xs):
     return m, sum((x - m) ** 2 for x in xs) / len(xs)
 
 
+def adjust(reviews: list, k: float = K) -> tuple[float, float, dict]:
+    """Pure function, no database: sets r["a"] (the adjusted value) on every review in place.
+    Used by compute() and, unchanged, by tools/normalization_proof.py.
+    k = 0 is a plain per-judge z-score; k -> infinity is no correction at all."""
+    if not reviews:
+        return 0.0, 0.0, {}
+    M, var = _mean_var([r["x"] for r in reviews])
+    S = math.sqrt(var)
+    by_judge = defaultdict(list)
+    for r in reviews:
+        by_judge[r["judge"]].append(r)
+    stats = {}
+    for j, rs in by_judge.items():
+        m, v = _mean_var([r["x"] for r in rs])
+        n = len(rs)
+        m2 = (n * m + k * M) / (n + k)
+        sd2 = math.sqrt((n * v + k * var) / (n + k))
+        for r in rs:
+            r["a"] = M + S * (r["x"] - m2) / sd2 if sd2 > 1e-9 else M
+        stats[j] = {"n": n, "mean": m, "sd": math.sqrt(v), "shrunk_mean": m2}
+    return M, S, stats
+
+
+def project_score(adjusted: list, M: float, c: float = C) -> float:
+    """Mean of the adjusted reviews plus c 'average reviews' (the project prior)."""
+    return (sum(adjusted) + c * M) / (len(adjusted) + c)
+
+
 def compute(conn, event_id: str) -> dict:
     ev = db.one(conn, "SELECT * FROM events WHERE id = %s", (event_id,))
     rubric = db.rows(conn, "SELECT * FROM criteria WHERE event_id = %s ORDER BY position", (event_id,))
@@ -75,31 +103,20 @@ def compute(conn, event_id: str) -> dict:
     pending = {r["project_id"]: r["n"] for r in pending}
 
     judges, flags = {}, []
-    if reviews:
-        M, var = _mean_var([r["x"] for r in reviews])
-        S = math.sqrt(var)
-        by_judge = defaultdict(list)
-        for r in reviews:
-            by_judge[r["judge"]].append(r)
-        for j, rs in by_judge.items():
-            m, v = _mean_var([r["x"] for r in rs])
-            n = len(rs)
-            m2 = (n * m + K * M) / (n + K)
-            sd2 = math.sqrt((n * v + K * var) / (n + K))
-            for r in rs:
-                r["a"] = M + S * (r["x"] - m2) / sd2 if sd2 > 1e-9 else M
-            judges[j] = {"judge_id": j, "name": rs[0]["judge_name"], "reviews": n, "mean": round(m, 2),
-                         "sd": round(math.sqrt(v), 2), "shift": round(M - m2, 2)}
-            if n >= 3 and math.sqrt(v) < FLAT_SD:
-                judges[j]["flag"] = "flat"
-                flags.append({"kind": "flat_judge", "judge_id": j, "name": rs[0]["judge_name"],
-                              "detail": f"{n} reviews, spread {math.sqrt(v):.1f} points: barely tells projects apart"})
-            elif n >= 3 and sum(r["flat_items"] for r in rs) == n:
-                judges[j]["flag"] = "same_every_criterion"
-                flags.append({"kind": "straight_line", "judge_id": j, "name": rs[0]["judge_name"],
-                              "detail": "gives every criterion the same value in every review"})
-    else:
-        M = S = 0.0
+    M, S, stats = adjust(reviews)
+    for j, st in stats.items():
+        n, m, sd = st["n"], st["mean"], st["sd"]
+        name = next(r["judge_name"] for r in reviews if r["judge"] == j)
+        judges[j] = {"judge_id": j, "name": name, "reviews": n, "mean": round(m, 2), "sd": round(sd, 2),
+                     "shift": round(M - st["shrunk_mean"], 2)}
+        if n >= 3 and sd < FLAT_SD:
+            judges[j]["flag"] = "flat"
+            flags.append({"kind": "flat_judge", "judge_id": j, "name": name,
+                          "detail": f"{n} reviews, spread {sd:.1f} points: barely tells projects apart"})
+        elif n >= 3 and all(r["flat_items"] for r in reviews if r["judge"] == j):
+            judges[j]["flag"] = "same_every_criterion"
+            flags.append({"kind": "straight_line", "judge_id": j, "name": name,
+                          "detail": "gives every criterion the same value in every review"})
 
     per_project = defaultdict(list)
     for r in reviews:
@@ -111,7 +128,7 @@ def compute(conn, event_id: str) -> dict:
                "track_id": p["track_id"], "reviews": len(rs), "pending": pending.get(pid, 0)}
         if rs:
             row["raw"] = round(sum(r["x"] for r in rs) / len(rs), 2)
-            row["score"] = round((sum(r["a"] for r in rs) + C * M) / (len(rs) + C), 2)
+            row["score"] = round(project_score([r["a"] for r in rs], M), 2)
             spread = max(r["a"] for r in rs) - min(r["a"] for r in rs)
             if len(rs) > 1 and spread > SPLIT:
                 flags.append({"kind": "split_panel", "project_id": pid, "title": p["title"],

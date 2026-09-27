@@ -62,6 +62,26 @@
   </div>{% endif %}
 </section>
 
+<section class="block" id="pairwise">
+  <div class="block-head"><h2>Pairwise mode</h2><span class="muted">a second, independent ranking</span></div>
+  <div class="split">
+    <form class="card" method="post" action="/organize/{{ ev.slug }}/pairwise">{{ csrf_field() }}
+      <p>Judges answer "which of these two is better?" for entries the rubric ranking finds hard to separate (neighbours first).
+         A Bradley–Terry model turns the answers into a ranking you can check against the rubric's.</p>
+      <div class="row"><div><label for="pj" style="margin-top:0">Comparisons per judge</label><input id="pj" name="per_judge" type="number" min="1" max="50" value="5"></div>
+        <button class="btn" {% if pub %}disabled{% endif %}>Create comparisons</button></div>
+    </form>
+    <div class="card">
+      <p class="eyebrow">Progress</p>
+      <p class="big fig" style="font-size:1.6rem;margin:0">{{ pw.decided }} <small class="muted" style="font:400 .9rem var(--sans)">/ {{ pw.total }} answered</small></p>
+      {% if pw.decided %}<p style="margin-top:var(--s3)">Judges agreed with the rubric order in <strong class="fig">{{ pw.agree }} of {{ pw.agree + pw.against }}</strong> head-to-heads{% if pw.tau is not none %}
+        · rank agreement τ <strong class="fig">{{ '%.2f'|format(pw.tau) }}</strong>{% endif %}.</p>
+        {% if pw.disagreements %}<p class="muted">{{ pw.disagreements|length }} pair{{ '' if pw.disagreements|length == 1 else 's' }} where judges preferred the lower-ranked entry. <a href="/organize/{{ ev.slug }}/results#pairwise">See which</a></p>{% endif %}
+      {% else %}<p class="muted" style="margin-top:var(--s3)">No answers yet.</p>{% endif %}
+    </div>
+  </div>
+</section>
+
 <section class="block" id="judges">
   <div class="block-head"><h2>Judges <span class="muted fig">{{ judges|length }}</span></h2></div>
   <div class="card scroll"><table>

@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 
 from .. import auth, authz, db
 from ..errors import forbidden, not_found
-from ..services import assign, events, results, voting
+from ..services import assign, events, pairwise, results, voting
 from ..services.submissions import is_open
 from ..web import form_or_json, go, page, wants_json
 
@@ -87,6 +87,7 @@ def dashboard(request: Request, slug: str):
                                   ORDER BY p.status <> 'submitted', p.title""", (ev["id"],))
         res = results.compute(conn, ev["id"])
         pub = results.published(conn, ev["id"])
+        pw = pairwise.summary(conn, ev["id"], [r["project_id"] for r in res["ranking"]])
         tally = None if voting.sealed(ev) else voting.tally(conn, ev)
         voters = db.val(conn, "SELECT count(DISTINCT voter_id) FROM votes WHERE event_id = %s", (ev["id"],))
     flags = {j["judge_id"]: j.get("flag") for j in res["judges"]}
@@ -99,7 +100,7 @@ def dashboard(request: Request, slug: str):
                                         for j in judges], "flags": res["flags"]})
     return page(request, "organize/dashboard.html", ev=ev, counts=counts, judges=judges, flags=flags,
                 organizers=organizers, rubric=rubric, tracks=tracks, scored=scored, res=res, pub=pub,
-                progress=progress, open=is_open(ev), entries=entries, tally=tally, voters=voters, vstate=voting.state(ev))
+                progress=progress, open=is_open(ev), entries=entries, tally=tally, voters=voters, vstate=voting.state(ev), pw=pw)
 
 
 @router.post("/{slug}/settings")
@@ -127,7 +128,7 @@ async def invite(request: Request, slug: str):
     me = auth.need_user(request)
     form = await request.form() if not request.headers.get("content-type", "").startswith("application/json") else None
     data = await form_or_json(request)
-    tracks = form.getlist("tracks") if form is not None else list(data.get("tracks") or [])
+    tracks = [t for t in form.getlist("tracks") if isinstance(t, str)] if form is not None else list(data.get("tracks") or [])
     with db.tx() as conn:
         ev = _event(conn, me, slug)
         out = events.invite(conn, me, ev, data.get("email", ""), data.get("role", "judge"), tracks, data.get("name", ""))
@@ -136,7 +137,8 @@ async def invite(request: Request, slug: str):
     if out["link"]:
         return go(f"/organize/{slug}#judges", f"Added {out['email']} as {out['role']}. Send them this one-time link "
                   f"to set a password: {request.base_url}{out['link'].lstrip('/')}")
-    return go(f"/organize/{slug}#judges", f"Added {out['email']} as {out['role']} (they already have an account).")
+    return go(f"/organize/{slug}#judges", f"Added {out['email']} as {out['role']}. They already have an account, or "
+              "another event invited them too; if they have never logged in, the platform admin issues their activation link.")
 
 
 @router.post("/{slug}/judges/{uid}/remove")
@@ -215,8 +217,9 @@ async def moderate(request: Request, slug: str, pid: str):
             raise not_found("no such project in this event")
         if ev["results_published_at"]:
             raise conflict("results are published; retract them first")
-        if status not in ("withdrawn", "submitted") or (status == "submitted" and p["status"] != "withdrawn"):
-            raise bad("an organizer can withdraw a submitted entry or restore a withdrawn one")
+        if not ((status == "withdrawn" and p["status"] == "submitted")
+                or (status == "submitted" and p["status"] == "withdrawn" and p["submitted_at"] is not None)):
+            raise bad("an organizer can withdraw a submitted entry or restore a withdrawn one that was submitted")
         conn.execute("UPDATE projects SET status = %s WHERE id = %s", (status, pid))
         audit.log(conn, me, f"project.{'withdraw' if status == 'withdrawn' else 'restore'}", ev["id"], pid,
                   {"reason": (data.get("reason") or "").strip()[:300]})
@@ -230,9 +233,27 @@ def preview(request: Request, slug: str):
         ev = _event(conn, me, slug)
         res = results.compute(conn, ev["id"])
         pub = results.published(conn, ev["id"])
+        pw = pairwise.summary(conn, ev["id"], [r["project_id"] for r in res["ranking"]])
+    titles = {r["project_id"]: r["title"] for r in res["ranking"]}
     if wants_json(request):
-        return JSONResponse(res)
-    return page(request, "organize/results.html", ev=ev, res=res, pub=pub)
+        return JSONResponse({**res, "pairwise": pw})
+    return page(request, "organize/results.html", ev=ev, res=res, pub=pub, pw=pw, titles=titles)
+
+
+@router.post("/{slug}/pairwise")
+async def pairwise_round(request: Request, slug: str):
+    me = auth.need_user(request)
+    data = await form_or_json(request)
+    try:
+        per_judge = int(data.get("per_judge", 5))
+    except (TypeError, ValueError):
+        from ..errors import bad
+        raise bad("comparisons per judge must be a whole number")
+    with db.tx() as conn:
+        ev = _event(conn, me, slug)
+        order = [r["project_id"] for r in results.compute(conn, ev["id"])["ranking"]]
+        out = pairwise.generate(conn, me, ev, per_judge, order)
+    return _done(request, f"/organize/{slug}#pairwise", f"Created {out['created']} head-to-head comparison(s).", out)
 
 
 @router.post("/{slug}/publish")

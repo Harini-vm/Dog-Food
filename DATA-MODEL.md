@@ -1,6 +1,6 @@
 # Data model
 
-The schema is plain SQL in `src/dogfood/migrations/` (001 to 006), applied in order at boot. This
+The schema is plain SQL in `src/dogfood/migrations/` (001 to 007), applied in order at boot. This
 file explains each table and **why** it looks the way it does. Every table here is used; one that
 was not (`prizes`) was removed in 006.
 
@@ -66,6 +66,11 @@ imported as `duplicate` of `prj_07`.
 
 Why scores are split into `scores` + `score_items`: the rubric is data, not columns. An organizer
 can add a criterion without a schema change, and old reviews stay readable.
+
+`comparisons` (pairwise mode) stores one head-to-head question per row: `(judge_id, project_a,
+project_b)` with `project_a < project_b` (a CHECK constraint), so each pair has one canonical order and
+`UNIQUE (judge_id, project_a, project_b)` forbids asking a judge the same pair twice. `winner` is
+`a`, `b`, `tie`, or NULL while unanswered. It is locked after publishing by the same trigger as scores.
 
 `results` holds published snapshots: `(event_id, version)`, the public JSON body, and its sha256.
 Snapshots are never updated. A retraction only sets `retracted_at`, once. That is why published

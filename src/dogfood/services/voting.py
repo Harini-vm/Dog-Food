@@ -40,10 +40,21 @@ def sealed(ev) -> bool:
     return ev["voting_opens_at"] is not None and (ev["voting_closes_at"] is None or state(ev) != "closed")
 
 
-def user_voter(conn, event_id: str, user_id: str) -> str:
-    conn.execute("INSERT INTO voters (id, event_id, user_id) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
-                 (new_id("vtr"), event_id, user_id))
-    return db.val(conn, "SELECT id FROM voters WHERE event_id = %s AND user_id = %s", (event_id, user_id))
+def user_voter(conn, event_id: str, user_id: str, email: str) -> str:
+    """The voter row for an account. Identity is the email address, so someone who first voted with an
+    email link and then logs in (or the other way round) keeps one voter and one budget."""
+    k = email_key(email)
+    conn.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", ("voter:" + event_id + k,))
+    row = db.one(conn, "SELECT id, user_id FROM voters WHERE event_id = %s AND email_key = %s", (event_id, k)) \
+        or db.one(conn, "SELECT id, user_id FROM voters WHERE event_id = %s AND user_id = %s", (event_id, user_id))
+    if row is None:
+        vid = new_id("vtr")
+        conn.execute("INSERT INTO voters (id, event_id, user_id, email_key) VALUES (%s, %s, %s, %s)",
+                     (vid, event_id, user_id, k))
+        return vid
+    conn.execute("UPDATE voters SET user_id = coalesce(user_id, %s), email_key = coalesce(email_key, %s) WHERE id = %s",
+                 (user_id, k, row["id"]))
+    return row["id"]
 
 
 def email_key(email: str) -> str:
@@ -58,9 +69,14 @@ def request_link(conn, ev, email: str, base_url: str) -> str:
     if state(ev) != "open":
         raise forbidden("voting is not open", "voting_closed")
     k = email_key(email)
-    conn.execute("INSERT INTO voters (id, event_id, email_key) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
-                 (new_id("vtr"), ev["id"], k))
+    conn.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", ("voter:" + ev["id"] + k,))
+    account = db.val(conn, "SELECT id FROM users WHERE email = %s", (email,))
     vid = db.val(conn, "SELECT id FROM voters WHERE event_id = %s AND email_key = %s", (ev["id"], k))
+    if vid is None and account:
+        vid = user_voter(conn, ev["id"], account, email)          # the same budget as their account
+    if vid is None:
+        vid = new_id("vtr")
+        conn.execute("INSERT INTO voters (id, event_id, email_key) VALUES (%s, %s, %s)", (vid, ev["id"], k))
     raw = new_token(24)
     conn.execute("INSERT INTO voter_links VALUES (%s, %s, %s, NULL)",
                  (digest(raw), vid, datetime.now(timezone.utc) + timedelta(hours=24)))
@@ -95,9 +111,7 @@ def session_voter(conn, raw: str | None, event_id: str):
 def _own_team(conn, voter, project) -> bool:
     members = db.rows(conn, """SELECT u.id, u.email FROM team_members m JOIN users u ON u.id = m.user_id
                                WHERE m.team_id = %s""", (project["team_id"],))
-    if voter["user_id"]:
-        return any(m["id"] == voter["user_id"] for m in members)
-    return any(email_key(m["email"]) == voter["email_key"] for m in members)
+    return any(m["id"] == voter["user_id"] or email_key(m["email"]) == voter["email_key"] for m in members)
 
 
 def used(conn, voter_id: str) -> int:

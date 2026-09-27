@@ -1,12 +1,4 @@
-{% extends "base.html" %}{% block title %}Organize{% if me.is_admin %}
-<h2>Import an event</h2>
-<form class="card" method="post" action="/organize/import" enctype="multipart/form-data"><input type="hidden" name="csrf" value="{{ csrf }}">
-  <label for="imf">JSON file (the fixtures.json format, or a DOGFOOD export)</label><input id="imf" name="file" type="file" accept="application/json,.json" required>
-  <label class="inline"><input type="checkbox" name="as_copy" value="1"> Import as a copy (fresh ids; use this to import the same event twice)</label>
-  <div class="actions"><button class="btn primary">Import</button></div>
-  <small>Every row is checked before anything is written. A bad file changes nothing.</small></form>
-{% endif %}
-{% endblock %}
+{% extends "base.html" %}{% block title %}Organize{% endblock %}
 {% block body %}
 <h1>Your events</h1>
 <div class="grid">

@@ -4,8 +4,8 @@ from fastapi import APIRouter, Request
 
 from .. import auth, db
 from ..errors import forbidden
-from ..services import scoring
-from ..web import go, page
+from ..services import pairwise, scoring
+from ..web import form_or_json, go, page
 
 router = APIRouter(prefix="/judge", include_in_schema=False)
 
@@ -22,10 +22,35 @@ def queue(request: Request):
             LEFT JOIN tracks t ON t.id = p.track_id LEFT JOIN scores s ON s.assignment_id = a.id
             WHERE a.judge_id = %s ORDER BY e.created_at DESC, s.id IS NOT NULL, p.title""", (me.id,))
         judges_anything = db.one(conn, "SELECT 1 FROM memberships WHERE user_id = %s AND role = 'judge'", (me.id,))
+        pairs = pairwise.for_judge(conn, me)
     if not judges_anything:
         raise forbidden("this page is for judges", "not_a_judge")
     done = sum(r["scored"] for r in rows)
-    return page(request, "judge/queue.html", rows=rows, done=done, total=len(rows))
+    return page(request, "judge/queue.html", rows=rows, done=done, total=len(rows), pairs=pairs,
+                pairs_open=sum(1 for c in pairs if c["winner"] is None))
+
+
+@router.get("/pairs/{cid}")
+def pair_form(request: Request, cid: str):
+    me = auth.need_user(request)
+    with db.tx() as conn:
+        c = pairwise.load(conn, me, cid)
+        left, right = pairwise.project_pair(conn, c)
+        ev = db.one(conn, "SELECT * FROM events WHERE id = %s", (c["event_id"],))
+        nxt = db.val(conn, """SELECT id FROM comparisons WHERE judge_id = %s AND winner IS NULL AND id <> %s
+                              ORDER BY created_at, id LIMIT 1""", (me.id, cid))
+    chosen = {"a": c["project_a"], "b": c["project_b"], "tie": "tie"}.get(c["winner"] or "", None)
+    return page(request, "judge/pair.html", c=c, left=left, right=right, ev=ev, nxt=nxt, chosen=chosen,
+                open=scoring.judging_open(ev))
+
+
+@router.post("/pairs/{cid}")
+async def pair_save(request: Request, cid: str):
+    me = auth.need_user(request)
+    data = await form_or_json(request)
+    with db.tx() as conn:
+        pairwise.decide(conn, me, cid, data.get("choice", ""))
+    return go(f"/judge/pairs/{data['next']}" if data.get("next") else "/judge#pairs", "Comparison saved.")
 
 
 def _assignment(conn, me, aid):
@@ -59,7 +84,7 @@ def form(request: Request, aid: str):
 @router.post("/{aid}")
 async def save(request: Request, aid: str):
     me = auth.need_user(request)
-    data = dict(await request.form())
+    data = await form_or_json(request)
     with db.tx() as conn:
         rubric = scoring.criteria(conn, _assignment(conn, me, aid)["event_id"])
         values = {}

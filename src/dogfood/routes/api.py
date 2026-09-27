@@ -56,6 +56,7 @@ def my_assignments(request: Request):
     with db.tx() as conn:
         rows = db.rows(conn, """SELECT a.id, a.event_id, a.project_id, p.title, s.id IS NOT NULL AS scored
                                 FROM assignments a JOIN projects p ON p.id = a.project_id
+                                JOIN memberships m ON m.event_id = a.event_id AND m.user_id = a.judge_id AND m.role = 'judge'
                                 LEFT JOIN scores s ON s.assignment_id = a.id
                                 WHERE a.judge_id = %s ORDER BY a.event_id, p.title""", (u.id,))
         if not rows and not db.one(conn, "SELECT 1 FROM memberships WHERE user_id = %s AND role = 'judge'", (u.id,)):
@@ -99,3 +100,27 @@ def published_results(event: str):
     if snap is None:
         raise not_found("results are not published", "not_published")
     return {**snap["body"], "version": snap["version"], "sha256": snap["body_hash"]}
+
+
+class ChoiceIn(BaseModel):
+    winner: str = Field(..., description="the id of the better entry, or 'tie'")
+
+
+@router.get("/judge/pairs", tags=["judging"], summary="My head-to-head comparisons (pairwise mode)")
+def my_pairs(request: Request):
+    u = authz.need_login(user(request))
+    with db.tx() as conn:
+        rows = db.rows(conn, """SELECT c.id, c.event_id, c.project_a, c.project_b, c.winner FROM comparisons c
+                                JOIN memberships m ON m.event_id = c.event_id AND m.user_id = c.judge_id AND m.role = 'judge'
+                                WHERE c.judge_id = %s ORDER BY c.created_at, c.id""", (u.id,))
+        return {"pairs": [{**r, "winner": {"a": r["project_a"], "b": r["project_b"], "tie": "tie"}.get(r["winner"])}
+                          for r in rows]}
+
+
+@router.put("/pairs/{cid}", tags=["judging"], summary="Answer a comparison: which entry is better")
+def answer_pair(request: Request, cid: str, body: ChoiceIn):
+    from ..services import pairwise
+    u = authz.need_login(user(request))
+    with db.tx() as conn:
+        pairwise.decide(conn, u, cid, body.winner)
+    return {"ok": True}

@@ -17,14 +17,14 @@ service (SSRF).
 
 import hashlib
 import hmac
+import http.client
 import ipaddress
 import json
 import logging
 import socket
+import ssl
 import threading
 import time
-import urllib.error
-import urllib.request
 from urllib.parse import urlsplit
 
 from .. import audit, config, db
@@ -37,21 +37,41 @@ BACKOFF = [5, 25, 120, 600, 3000]
 TYPES = ("project.submitted", "results.published", "results.retracted", "certificates.issued", "ping")
 
 
-def check_url(url: str) -> str:
+NAT64 = ipaddress.ip_network("64:ff9b::/96")
+IPV4_COMPAT = ipaddress.ip_network("::/96")              # deprecated IPv4-compatible form, e.g. ::127.0.0.1
+
+
+def _public(ip) -> bool:
+    if ip.version == 6 and ip.ipv4_mapped:
+        ip = ip.ipv4_mapped
+    if ip.version == 6 and (ip in NAT64 or ip in IPV4_COMPAT):   # 64:ff9b::a9fe:a9fe = 169.254.169.254 via NAT64
+        ip = ipaddress.ip_address(int(ip) & 0xFFFFFFFF)
+    return ip.is_global
+
+
+def resolve(url: str) -> tuple[str, str, int, str]:
+    """Validate the URL and return (scheme, host, port, ip): one checked address to connect to."""
     url = (url or "").strip()
     parts = urlsplit(url)
     if parts.scheme not in ("http", "https") or not parts.hostname:
         raise bad("webhook URL must be http:// or https:// with a host")
-    if not config.WEBHOOK_ALLOW_PRIVATE:
-        try:
-            addrs = {ai[4][0] for ai in socket.getaddrinfo(parts.hostname, parts.port or 443)}
-        except OSError:
-            raise bad("cannot resolve that host")
-        for a in addrs:
-            ip = ipaddress.ip_address(a.split("%")[0])
-            if not ip.is_global:
-                raise bad("webhook receivers must be public addresses", "private_address")
-    return url
+    if parts.username or parts.password:
+        raise bad("put credentials in the receiver's own check of our signature, not in the URL")
+    port = parts.port or (443 if parts.scheme == "https" else 80)
+    try:
+        addrs = [ai[4][0].split("%")[0] for ai in socket.getaddrinfo(parts.hostname, port, type=socket.SOCK_STREAM)]
+    except OSError:
+        raise bad("cannot resolve that host")
+    if not addrs:
+        raise bad("cannot resolve that host")
+    if not config.WEBHOOK_ALLOW_PRIVATE and not all(_public(ipaddress.ip_address(a)) for a in addrs):
+        raise bad("webhook receivers must be public addresses", "private_address")
+    return parts.scheme, parts.hostname, port, addrs[0]
+
+
+def check_url(url: str) -> str:
+    resolve(url)
+    return url.strip()
 
 
 def add(conn, user, ev, url: str) -> dict:
@@ -100,17 +120,46 @@ def verify(secret: str, body: bytes, header: str, tolerance: int = 300, now: int
 
 
 def _send(url: str, secret: str, event_id: str, body: str) -> tuple[int | None, str | None]:
-    raw = body.encode()
-    req = urllib.request.Request(url, data=raw, method="POST", headers={
-        "Content-Type": "application/json", "User-Agent": "dogfood-webhooks/1",
-        "X-Dogfood-Event-Id": event_id, "X-Dogfood-Signature": sign(secret, raw, int(time.time()))})
+    """POST to the receiver. The host is resolved and checked once, and the connection goes to exactly
+    that address (DNS rebinding cannot swap in an internal one). TLS still verifies the real host name.
+    Redirects are never followed: http.client does not follow them."""
     try:
-        with urllib.request.urlopen(req, timeout=config.WEBHOOK_TIMEOUT) as r:
-            return r.status, None
-    except urllib.error.HTTPError as e:
-        return e.code, f"HTTP {e.code}"
-    except Exception as e:                                         # timeouts, refused connections, DNS
+        scheme, host, port, ip = resolve(url)
+    except Exception as e:
+        return None, "blocked: " + getattr(e, "message", str(e))
+    parts = urlsplit(url.strip())
+    path = (parts.path or "/") + (f"?{parts.query}" if parts.query else "")
+    raw = body.encode()
+    host_header = f"[{host}]" if ":" in host else host
+    if parts.port:
+        host_header += f":{parts.port}"
+    headers = {"Content-Type": "application/json", "User-Agent": "dogfood-webhooks/1", "Host": host_header,
+               "X-Dogfood-Event-Id": event_id, "X-Dogfood-Signature": sign(secret, raw, int(time.time()))}
+    timeout = config.WEBHOOK_TIMEOUT
+    try:
+        if scheme == "https":
+            ctx = ssl.create_default_context()
+
+            class Pinned(http.client.HTTPSConnection):
+                def connect(self):
+                    sock = socket.create_connection((ip, port), timeout=timeout)
+                    self.sock = ctx.wrap_socket(sock, server_hostname=host)
+            conn = Pinned(host, port, timeout=timeout, context=ctx)
+        else:
+            class PinnedHTTP(http.client.HTTPConnection):
+                def connect(self):
+                    self.sock = socket.create_connection((ip, port), timeout=timeout)
+            conn = PinnedHTTP(host, port, timeout=timeout)
+        try:
+            conn.request("POST", path, body=raw, headers=headers)
+            status = conn.getresponse().status
+        finally:
+            conn.close()
+    except Exception as e:                                          # timeouts, refused connections, TLS errors
         return None, type(e).__name__ + ": " + str(e)[:200]
+    if 300 <= status < 400:
+        return status, f"HTTP {status}: redirect not followed (receivers must answer directly)"
+    return status, None if 200 <= status < 300 else f"HTTP {status}"
 
 
 def deliver_one() -> bool:
