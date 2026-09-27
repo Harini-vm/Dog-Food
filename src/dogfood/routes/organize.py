@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 
 from .. import auth, authz, db
 from ..errors import forbidden, not_found
-from ..services import assign, events, results
+from ..services import assign, events, results, voting
 from ..services.submissions import is_open
 from ..web import form_or_json, go, page, wants_json
 
@@ -87,6 +87,8 @@ def dashboard(request: Request, slug: str):
                                   ORDER BY p.status <> 'submitted', p.title""", (ev["id"],))
         res = results.compute(conn, ev["id"])
         pub = results.published(conn, ev["id"])
+        tally = None if voting.sealed(ev) else voting.tally(conn, ev)
+        voters = db.val(conn, "SELECT count(DISTINCT voter_id) FROM votes WHERE event_id = %s", (ev["id"],))
     flags = {j["judge_id"]: j.get("flag") for j in res["judges"]}
     total = sum(j["assigned"] for j in judges)
     progress = {"assigned": total, "done": sum(j["done"] for j in judges), "reviews": scored,
@@ -97,7 +99,7 @@ def dashboard(request: Request, slug: str):
                                         for j in judges], "flags": res["flags"]})
     return page(request, "organize/dashboard.html", ev=ev, counts=counts, judges=judges, flags=flags,
                 organizers=organizers, rubric=rubric, tracks=tracks, scored=scored, res=res, pub=pub,
-                progress=progress, open=is_open(ev), entries=entries)
+                progress=progress, open=is_open(ev), entries=entries, tally=tally, voters=voters)
 
 
 @router.post("/{slug}/settings")

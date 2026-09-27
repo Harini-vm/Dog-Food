@@ -93,6 +93,11 @@
   {% endif %}
 </div>
 
+<h2 id="votes">People's choice</h2>
+<div class="card">{% if not ev.voting_opens_at %}<p class="muted" style="margin:0">No public vote. Set voting times under Settings.</p>
+  {% elif tally is none %}<p style="margin:0"><span class="chip">sealed</span> {{ voters }} voter(s) so far. Counts stay hidden, from organizers too, until voting closes{% if ev.voting_closes_at %} at {{ ev.voting_closes_at|dt }}{% endif %}.</p>
+  {% else %}<ol>{% for t in tally[:10] %}<li>{{ t.title }}: {{ t.votes }} vote{{ '' if t.votes == 1 else 's' }}</li>{% endfor %}</ol>{% endif %}</div>
+
 <h2 id="entries">Entries</h2>
 <p><a href="/projects?event={{ ev.slug }}">Public gallery</a> · withdraw an entry that breaks the rules, or restore one withdrawn by mistake.</p>
 <div class="card scroll"><table>
@@ -119,6 +124,13 @@
     <div class="grow"><label for="sj">Judging closes (UTC, optional)</label><input id="sj" name="judging_closes_at" type="datetime-local" value="{{ ev.judging_closes_at.strftime('%Y-%m-%dT%H:%M') if ev.judging_closes_at else '' }}"></div>
   </div>
   <label for="sd">Description</label><textarea id="sd" name="description" maxlength="2000">{{ ev.description }}</textarea>
+  <input type="hidden" name="settings_form" value="1">
+  <div class="row">
+    <div class="grow"><label for="vo">Public voting opens (UTC, empty = no vote)</label><input id="vo" name="voting_opens_at" type="datetime-local" value="{{ ev.voting_opens_at.strftime('%Y-%m-%dT%H:%M') if ev.voting_opens_at else '' }}"></div>
+    <div class="grow"><label for="vc">Public voting closes (UTC)</label><input id="vc" name="voting_closes_at" type="datetime-local" value="{{ ev.voting_closes_at.strftime('%Y-%m-%dT%H:%M') if ev.voting_closes_at else '' }}"></div>
+    <div><label for="vp">Votes per voter</label><input id="vp" name="votes_per_voter" type="number" min="1" max="50" value="{{ ev.votes_per_voter }}"></div>
+  </div>
+  <label class="inline"><input type="checkbox" name="comments_open" value="1" {% if ev.comments_open %}checked{% endif %}> Public comments are open</label>
   <div class="row"><div><label for="sm">Max team size</label><input id="sm" name="max_team_size" type="number" min="1" max="20" value="{{ ev.max_team_size }}"></div>
     <div><label for="sr">Reviews per project</label><input id="sr" name="reviews_per_project" type="number" min="1" max="20" value="{{ ev.reviews_per_project }}"></div></div>
   <div class="actions"><button class="btn primary">Save settings</button></div>

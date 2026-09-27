@@ -10,11 +10,11 @@
 <header class="bar"><div class="in">
   <a class="brand" href="/">DOGFOOD</a>
   <nav class="main" aria-label="Main">
-    {% set p = request.url.path %}
-    <a href="/projects" {% if p.startswith('/projects') %}aria-current="page"{% endif %}>Gallery</a>
-    <a href="/" {% if p == '/' %}aria-current="page"{% endif %}>Events</a>
-    {% if nav.judge %}<a href="/judge" {% if p.startswith('/judge') %}aria-current="page"{% endif %}>Judging</a>{% endif %}
-    {% if nav.organize %}<a href="/organize" {% if p.startswith('/organize') %}aria-current="page"{% endif %}>Organize</a>{% endif %}
+    {% set here = request.url.path %}
+    <a href="/projects" {% if here.startswith('/projects') %}aria-current="page"{% endif %}>Gallery</a>
+    <a href="/" {% if here == '/' %}aria-current="page"{% endif %}>Events</a>
+    {% if nav.judge %}<a href="/judge" {% if here.startswith('/judge') %}aria-current="page"{% endif %}>Judging</a>{% endif %}
+    {% if nav.organize %}<a href="/organize" {% if here.startswith('/organize') %}aria-current="page"{% endif %}>Organize</a>{% endif %}
   </nav>
   <div class="who">
     {% if me %}<span class="muted">{{ me.name }}</span>

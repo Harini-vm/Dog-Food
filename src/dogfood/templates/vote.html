@@ -1,0 +1,35 @@
+{% extends "base.html" %}{% block title %}Vote · {{ ev.name }}{% endblock %}
+{% block body %}
+<p><a href="/events/{{ ev.slug }}">← {{ ev.name }}</a></p>
+<h1>People's choice</h1>
+{% if st == 'off' %}<p class="card">This event has no public vote.</p>
+{% elif st == 'not_yet' %}<p class="card">Voting opens {{ ev.voting_opens_at|dt }}.</p>
+{% elif st == 'closed' %}
+  <p class="card">Voting closed {{ ev.voting_closes_at|dt }}.</p>
+  {% if tally %}<h2>Votes</h2><div class="card scroll"><table><thead><tr><th scope="col">Project</th><th scope="col">Team</th><th scope="col" class="num">Votes</th></tr></thead>
+    <tbody>{% for t in tally %}<tr><td><a href="/projects/{{ t.project_id }}">{{ t.title }}</a></td><td>{{ t.team }}</td><td class="num">{{ t.votes }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+{% elif not has_voter %}
+  <div class="grid">
+    <div class="card"><h2 style="margin-top:0">Have an account?</h2><p><a class="btn primary" href="/login?next=/events/{{ ev.slug }}/vote">Log in to vote</a></p></div>
+    <form class="card" method="post" action="/events/{{ ev.slug }}/vote/link"><h2 style="margin-top:0">Vote with your email</h2>
+      <p class="muted">We send a one-time link. Your address is never shown to anyone, and each address has one set of votes.</p>
+      <label for="ve">Email</label><input id="ve" name="email" type="email" required autocomplete="email">
+      <div class="actions"><button class="btn primary">Send me a voting link</button></div></form>
+  </div>
+{% else %}
+  <p class="card"><strong>{{ left }} of {{ ev.votes_per_voter }}</strong> votes left · voting closes {{ ev.voting_closes_at|dt if ev.voting_closes_at else 'when the organizers close it' }}.
+    Projects are listed in an order made just for you. Vote counts stay hidden until voting closes.</p>
+  <div class="grid">
+  {% for p in items %}
+    <article class="card"><p style="margin:0">{% if p.track %}<span class="chip brand">{{ p.track }}</span>{% endif %}{% if p.mine %} <span class="chip ok">your vote</span>{% endif %}</p>
+      <h2 style="margin:.4rem 0"><a href="/projects/{{ p.id }}">{{ p.title }}</a></h2>
+      <p class="muted">{{ p.summary }}</p><small>by {{ p.team }}</small>
+      <form method="post" action="/events/{{ ev.slug }}/vote" class="actions">
+        <input type="hidden" name="csrf" value="{{ vcsrf or csrf }}"><input type="hidden" name="project_id" value="{{ p.id }}">
+        {% if p.mine %}<button class="btn" name="action" value="remove">Remove vote</button>
+        {% else %}<button class="btn primary" name="action" value="vote" {% if left <= 0 %}disabled{% endif %}>Vote</button>{% endif %}
+      </form></article>
+  {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

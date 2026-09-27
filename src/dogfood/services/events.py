@@ -80,19 +80,32 @@ def update_settings(conn, user, ev, data: dict) -> None:
         raise bad("submissions must open before they close")
     if judging and judging <= closes:
         raise bad("judging must close after submissions close")
+    v_open = parse_time(data.get("voting_opens_at"), "voting opens") if "voting_opens_at" in data else ev["voting_opens_at"]
+    v_close = parse_time(data.get("voting_closes_at"), "voting closes") if "voting_closes_at" in data \
+        else ev["voting_closes_at"]
+    if v_open and v_close and v_open >= v_close:
+        raise bad("voting must open before it closes")
+    if v_close and not v_open:
+        raise bad("set when voting opens too")
     new = {"name": (data.get("name") or ev["name"]).strip()[:120],
            "description": (data.get("description", ev["description"]) or "").strip()[:2000],
            "opens_at": opens, "closes_at": closes, "judging_closes_at": judging,
            "max_team_size": _int(data.get("max_team_size"), "team size", 1, 20, ev["max_team_size"]),
            "reviews_per_project": _int(data.get("reviews_per_project"), "reviews per project", 1, 20,
-                                       ev["reviews_per_project"])}
+                                       ev["reviews_per_project"]),
+           "voting_opens_at": v_open, "voting_closes_at": v_close,
+           "votes_per_voter": _int(data.get("votes_per_voter"), "votes per voter", 1, 50, ev["votes_per_voter"]),
+           "comments_open": (str(data.get("comments_open", "")).lower() in ("1", "true", "on", "yes"))
+                            if ("comments_open" in data or "settings_form" in data) else ev["comments_open"]}
     biggest = db.val(conn, "SELECT coalesce(max(n), 0) FROM (SELECT count(*) n FROM team_members "
                            "WHERE event_id = %s GROUP BY team_id) x", (ev["id"],))
     if new["max_team_size"] < biggest:
         raise bad(f"a team already has {biggest} members; the limit cannot go below that")
     conn.execute("""UPDATE events SET name=%(name)s, description=%(description)s, opens_at=%(opens_at)s,
                       closes_at=%(closes_at)s, judging_closes_at=%(judging_closes_at)s,
-                      max_team_size=%(max_team_size)s, reviews_per_project=%(reviews_per_project)s
+                      max_team_size=%(max_team_size)s, reviews_per_project=%(reviews_per_project)s,
+                      voting_opens_at=%(voting_opens_at)s, voting_closes_at=%(voting_closes_at)s,
+                      votes_per_voter=%(votes_per_voter)s, comments_open=%(comments_open)s
                     WHERE id=%(id)s""", {**new, "id": ev["id"]})
     changed = {k: str(v) for k, v in new.items() if v != ev[k]}
     audit.log(conn, user, "event.settings", ev["id"], ev["id"], changed)

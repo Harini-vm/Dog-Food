@@ -8,6 +8,7 @@
 <div class="actions">
   <a class="btn primary" href="/projects?event={{ ev.slug }}">Browse the gallery</a>
   {% if published %}<a class="btn" href="/events/{{ ev.slug }}/results">Results</a>{% endif %}
+  {% if ev.voting_opens_at %}<a class="btn" href="/events/{{ ev.slug }}/vote">People's choice vote</a>{% endif %}
   {% if 'organizer' in roles or 'admin' in roles %}<a class="btn" href="/organize/{{ ev.slug }}">Organizer dashboard</a>{% endif %}
   {% if 'judge' in roles %}<a class="btn" href="/judge">My reviews</a>{% endif %}
 </div>

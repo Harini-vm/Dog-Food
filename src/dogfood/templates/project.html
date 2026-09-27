@@ -5,9 +5,29 @@
   <article class="card"><p>{% if p.track %}<span class="chip brand">{{ p.track }}</span>{% endif %}
       {% if p.status != 'submitted' %}<span class="chip warn">{{ p.status }}</span>{% endif %}</p>
     <h1>{{ p.title }}</h1><p>{{ p.summary }}</p>
-    {% if p.repo_url %}<a class="btn" href="{{ p.repo_url }}" rel="noopener nofollow">Repository</a>{% endif %}</article>
+    {% if p.repo_url %}<a class="btn" href="{{ p.repo_url }}" rel="noopener nofollow ugc">Repository</a>{% endif %}</article>
   <aside class="card"><h2 style="margin-top:0">Team {{ p.team }}</h2>
     <ul>{% for m in members %}<li>{{ m.name }}</li>{% endfor %}</ul>
     <small>Submitted {{ p.submitted_at|dt }}</small></aside>
 </div>
+{% if p.status == 'submitted' %}
+<h2 id="comments">Comments ({{ comments|length }})</h2>
+<div class="stack">
+{% for c in comments %}
+  <div class="card" id="c-{{ c.id }}"><p class="comment">{{ c.body }}</p>
+    <small>{{ c.name }} · {{ c.created_at|dt }}</small>
+    {% if me and (me.id == c.user_id or can_moderate) %}
+    <form method="post" action="/comments/{{ c.id }}/hide" class="inline-form" style="margin-top:.4rem"><input type="hidden" name="csrf" value="{{ csrf }}">
+      {% if can_moderate and me.id != c.user_id %}<input name="reason" aria-label="Reason for hiding" placeholder="reason" required>{% endif %}
+      <button class="btn">{{ 'Delete' if me.id == c.user_id else 'Hide' }}</button></form>{% endif %}
+  </div>
+{% else %}<p class="muted">No comments yet.</p>{% endfor %}
+{% if me and comments_open %}
+  <form class="card" method="post" action="/projects/{{ p.id }}/comments"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <label for="cb">Add a comment</label><textarea id="cb" name="body" maxlength="2000" required></textarea>
+    <small>Plain text, up to 2000 characters.</small>
+    <div class="actions"><button class="btn primary">Post comment</button></div></form>
+{% elif not me %}<p><a href="/login?next=/projects/{{ p.id }}">Log in</a> to comment.</p>{% endif %}
+</div>
+{% endif %}
 {% endblock %}

@@ -3,10 +3,10 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from .. import auth, authz, db
+from .. import auth, authz, db, ratelimit
 from ..errors import forbidden, not_found
 from ..security import check_password
-from ..services import results, submissions
+from ..services import comments, results, submissions
 from ..web import form_or_json, go, page, wants_json
 
 router = APIRouter(include_in_schema=False)
@@ -109,7 +109,11 @@ def project(request: Request, pid: str):
             _missing()                                   # drafts are private; same answer as "no such project"
         members = db.rows(conn, """SELECT u.name FROM team_members m JOIN users u ON u.id = m.user_id
                                    WHERE m.team_id = %s ORDER BY m.captain DESC, u.name""", (p["team_id"],))
-    return page(request, "project.html", p=p, members=members)
+        notes = comments.visible(conn, pid) if p["status"] == "submitted" else []
+        can_moderate = bool(authz.roles(conn, me, p["event_id"]) & {"organizer", "admin"})
+        comments_open = db.val(conn, "SELECT comments_open FROM events WHERE id = %s", (p["event_id"],))
+    return page(request, "project.html", p=p, members=members, comments=notes, can_moderate=can_moderate,
+                comments_open=comments_open)
 
 
 @router.get("/login")
@@ -121,9 +125,11 @@ def login_form(request: Request, next: str = "/"):
 async def login(request: Request):
     data = await form_or_json(request)
     email = (data.get("email") or "").strip().lower()
+    ratelimit.check("login", email)
     with db.tx() as conn:
         u = db.one(conn, "SELECT id, password_hash FROM users WHERE email = %s", (email,))
     if not check_password(data.get("password") or "", u["password_hash"] if u else None):
+        ratelimit.hit("login", email)          # counts failures only: 10 per address per 10 minutes
         return page(request, "login.html", 401, next=data.get("next", "/"), error="Wrong email or password.", email=email)
     target = data.get("next") or "/"
     resp = go(target if target.startswith("/") and not target.startswith("//") else "/")

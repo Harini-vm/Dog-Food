@@ -83,3 +83,4 @@ fieldset.checks input, label.inline input { width: auto; min-height: auto; }
 .inline-form { display: flex; gap: .4rem; align-items: center; } .inline-form input { min-width: 8rem; }
 tr.top td:first-child { font-weight: 800; color: var(--brand); }
 details summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+.comment { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 .3rem; }

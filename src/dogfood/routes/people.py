@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from .. import audit, auth, db
+from .. import audit, auth, db, ratelimit
 from ..errors import bad, conflict, not_found
 from ..security import hash_password, new_id
 from ..services import events, teams
@@ -19,6 +19,7 @@ def signup_form(request: Request, next: str = "/"):
 
 @router.post("/signup")
 async def signup(request: Request):
+    ratelimit.hit("signup_net", ratelimit.client(request))
     data = await form_or_json(request)
     email = (data.get("email") or "").strip().lower()
     name = " ".join((data.get("name") or "").split())[:80]
