@@ -1,32 +1,52 @@
-{% extends "base.html" %}{% block title %}Score {{ a.title }}{% endblock %}
+{% extends "base.html" %}{% from "_ui.html" import seal %}{% block title %}Score {{ a.title }}{% endblock %}
 {% block body %}
-<p><a href="/judge">← My reviews</a></p>
+<p class="crumbs"><a href="/judge">← My reviews</a> · {{ a.event }}</p>
 <div class="split">
-  <article class="card">
-    <p>{% if a.track %}<span class="chip brand">{{ a.track }}</span>{% endif %}
-       {% if a.status != 'submitted' %}<span class="chip warn">{{ a.status }}: this entry will not be ranked</span>{% endif %}</p>
-    <h1>{{ a.title }}</h1><p class="muted">by {{ a.team }} · {{ a.event }}</p>
-    <p>{{ a.summary }}</p>
-    {% if a.repo_url %}<a class="btn" href="{{ a.repo_url }}" rel="noopener nofollow" target="_blank">Open repository</a>{% endif %}
+  <article class="stack">
+    <div>
+      <p class="eyebrow">{{ a.track or 'No track' }}</p>
+      <h1>{{ a.title }}</h1>
+      <p class="muted">by {{ a.team }}</p>
+      {% if a.status != 'submitted' %}<p>{{ seal(a.status|capitalize ~ ": this entry will not be ranked", "", "stamp") }}</p>{% endif %}
+    </div>
+    <div class="card">
+      <p class="eyebrow">What they built</p>
+      <p>{{ a.summary or 'No summary given.' }}</p>
+      {% if a.repo_url %}<div class="actions"><a class="btn" href="{{ a.repo_url }}" rel="noopener nofollow" target="_blank">Open repository ↗</a>
+        <code class="muted" style="overflow-wrap:anywhere">{{ a.repo_url }}</code></div>{% endif %}
+    </div>
+    <p class="muted"><small>Only you and the organizers see this scorecard. Other judges never see your scores, and you never see theirs.</small></p>
   </article>
-  <form class="card" method="post" action="/judge/{{ a.id }}">
+
+  <form class="card scorecard" method="post" action="/judge/{{ a.id }}" id="scorecard">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     {% if nxt %}<input type="hidden" name="next" value="{{ nxt }}">{% endif %}
-    <h2 style="margin-top:0">Your score</h2>
-    {% if not open %}<div class="note warn">Judging is closed for this event. Your score is shown read-only.</div>{% endif %}
-    <fieldset {% if not open %}disabled{% endif %} style="border:0;margin:0;padding:0">
+    <header><h2>Scorecard</h2>{% if s %}<small>saved {{ s.updated_at|dt('%d %b, %H:%M') }}</small>{% endif %}</header>
+    {% if not open %}<div style="padding:var(--s4) var(--s5) 0">{{ seal("Judging is closed", "read-only", "stamp") }}</div>{% endif %}
+    <fieldset {% if not open %}disabled{% endif %} style="border:0;margin:0;padding:0;min-width:0">
+    {% set total_w = rubric|sum(attribute='weight') %}
     {% for c in rubric %}
-      <fieldset class="scale"><legend>{{ c.name }} <small>weight {{ '%g'|format(c.weight|float) }}</small></legend>
+      <fieldset class="criterion" data-key="{{ c.key }}" data-weight="{{ c.weight|float }}" data-min="{{ c.min_score }}" data-max="{{ c.max_score }}">
+        <legend>{{ c.name }} <small>weight {{ '%g'|format(c.weight|float) }}</small></legend>
+        <div class="weight" title="{{ (100 * c.weight / total_w)|round|int }}% of the total"><span style="width:{{ (100 * c.weight / total_w)|round(1) }}%"></span></div>
+        <div class="scale">
         {% for v in range(c.min_score, c.max_score + 1) %}
           <label><input type="radio" name="{{ c.key }}" value="{{ v }}" required {% if values.get(c.key) == v %}checked{% endif %}><span>{{ v }}</span></label>
         {% endfor %}
+        </div>
       </fieldset>
     {% endfor %}
-    <label for="cm">Comment for the organizers <small>(optional, not shown to the team)</small></label>
-    <textarea id="cm" name="comment" maxlength="5000">{{ s.comment if s else '' }}</textarea>
-    <div class="actions"><button class="btn primary">{{ 'Save and next' if nxt else 'Save' }}</button></div>
+    <div class="criterion">
+      <label for="cm" style="margin-top:0">Comment for the organizers <small>(optional, never shown to the team)</small></label>
+      <textarea id="cm" name="comment" maxlength="5000">{{ s.comment if s else '' }}</textarea>
+    </div>
+    <div class="foot">
+      <div class="total" aria-live="polite"><output id="total" class="fig">–</output><span class="muted">/ 100 weighted</span></div>
+      <div class="actions" style="margin-top:var(--s3)"><button class="btn primary">{{ 'Save and next' if nxt else 'Save' }}</button>
+        {% if nxt %}<a class="btn quiet" href="/judge/{{ nxt }}">Skip for now</a>{% endif %}</div>
+    </div>
     </fieldset>
-    {% if s %}<small>Last saved {{ s.updated_at|dt }}</small>{% endif %}
   </form>
 </div>
+<script src="/static/scorecard.js"></script>
 {% endblock %}

@@ -1,7 +1,7 @@
 {% extends "base.html" %}{% block title %}Vote · {{ ev.name }}{% endblock %}
 {% block body %}
-<p><a href="/events/{{ ev.slug }}">← {{ ev.name }}</a></p>
-<h1>People's choice</h1>
+<p class="crumbs"><a href="/events/{{ ev.slug }}">← {{ ev.name }}</a></p>
+<div class="page-head"><div><p class="eyebrow">{{ ev.name }}</p><h1>People's choice</h1></div></div>
 {% if st == 'off' %}<p class="card">This event has no public vote.</p>
 {% elif st == 'not_yet' %}<p class="card">Voting opens {{ ev.voting_opens_at|dt }}.</p>
 {% elif st == 'closed' %}
@@ -21,9 +21,9 @@
     Projects are listed in an order made just for you. Vote counts stay hidden until voting closes.</p>
   <div class="grid">
   {% for p in items %}
-    <article class="card"><p style="margin:0">{% if p.track %}<span class="chip brand">{{ p.track }}</span>{% endif %}{% if p.mine %} <span class="chip ok">your vote</span>{% endif %}</p>
-      <h2 style="margin:.4rem 0"><a href="/projects/{{ p.id }}">{{ p.title }}</a></h2>
-      <p class="muted">{{ p.summary }}</p><small>by {{ p.team }}</small>
+    <article class="card entry"><p class="eyebrow" style="margin:0">{{ p.track or 'No track' }}{% if p.mine %} · <span class="chip ok">your vote</span>{% endif %}</p>
+      <h2><a href="/projects/{{ p.id }}">{{ p.title }}</a></h2>
+      <p>{{ p.summary }}</p><p class="by">by {{ p.team }}</p>
       <form method="post" action="/events/{{ ev.slug }}/vote" class="actions">
         <input type="hidden" name="csrf" value="{{ vcsrf or csrf }}"><input type="hidden" name="project_id" value="{{ p.id }}">
         {% if p.mine %}<button class="btn" name="action" value="remove">Remove vote</button>

@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block title %}Certificate · {{ rec.recipient }}{% endblock %}
+{% extends "base.html" %}{% from "_ui.html" import seal %}{% block title %}Certificate · {{ rec.recipient }}{% endblock %}
 {% block body %}
 <article class="card certificate">
   <p class="muted">{{ rec.event.name }}</p>
@@ -7,11 +7,10 @@
   <p class="big">{{ rec.recipient }}</p>
   <p>for <strong>{{ rec.project.title }}</strong> with team {{ rec.team }}</p>
   <p class="muted">Issued {{ rec.issued_at }} · certificate <code>{{ rec.id }}</code></p>
+  {% if status.valid %}{{ seal("Signature valid", "Ed25519 · " ~ rec.key_id) }}{% else %}{{ seal("Signature does not verify", "", "stamp") }}{% endif %}
 </article>
-<div class="card stack" style="margin-top:1rem">
-  {% if status.valid %}<div class="note ok" style="margin:0">Signature valid (Ed25519, key {{ rec.key_id }}).
-    {% if status.matches_current_results %}It matches the currently published results.{% else %}It was genuinely issued, but the results have changed since.{% endif %}</div>
-  {% else %}<div class="note bad" style="margin:0">Signature does not verify.</div>{% endif %}
+<div class="card stack no-print" style="margin-top:var(--s5)">
+  {% if status.valid %}<p>{% if status.matches_current_results %}It matches the currently published results.{% else %}It was genuinely issued, but the results have changed since.{% endif %}</p>{% endif %}
   <p style="margin:0">Check it yourself: download <a href="/api/v1/certificates/{{ c.id }}">the signed record</a> and
     <a href="/.well-known/dogfood-keys.json">the public key</a>, then run <code>python tools/verify_record.py record.json keys.json</code>.</p>
 </div>

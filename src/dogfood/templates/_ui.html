@@ -1,0 +1,26 @@
+{# Shared pieces. The Seal marks anything the system has locked, verified or refused. #}
+{% macro seal_icon(kind="ok") -%}
+<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 2.5l2.2 1.6 2.7-.2 1 2.5 2.4 1.3-.5 2.7 1.2 2.4-1.9 2 .1 2.7-2.6.8-1.4 2.3-2.7-.5L12 21.5l-2.3-1.5-2.7.5-1.4-2.3-2.6-.8.1-2.7-1.9-2 1.2-2.4-.5-2.7 2.4-1.3 1-2.5 2.7.2z"/>
+  {% if kind == "stamp" %}<path d="M9 9l6 6M15 9l-6 6"/>{% elif kind == "open" %}<circle cx="12" cy="12" r="1.6"/>{% else %}<path d="M8.5 12.2l2.4 2.4 4.8-5"/>{% endif %}
+</svg>
+{%- endmacro %}
+
+{% macro seal(label, detail="", kind="ok", title="") -%}
+<span class="seal {{ kind if kind != 'ok' else '' }}" {% if title %}title="{{ title }}"{% endif %}>{{ seal_icon(kind) }}<span>{{ label }}</span>{% if detail %}<code>{{ detail }}</code>{% endif %}</span>
+{%- endmacro %}
+
+{% macro rail(ev, here) -%}
+<nav class="rail" aria-label="Event sections">
+  <p class="ev">{{ ev.name }}<small><a href="/events/{{ ev.slug }}" style="border:0;padding:0;min-height:0;display:inline">public page ↗</a></small></p>
+  {% set base = "/organize/" ~ ev.slug %}
+  {% for group, items in [
+      ("Run", [("Overview", base, "overview"), ("Entries", base ~ "#entries", "entries"), ("Settings", base ~ "#settings", "settings")]),
+      ("Judge", [("Judges", base ~ "#judges", "judges"), ("Rubric", base ~ "#rubric", "rubric"), ("Assignments", base ~ "/assignments", "assignments")]),
+      ("Publish", [("Results preview", base ~ "/results", "results"), ("Certificates", base ~ "/certificates", "certificates"), ("People's choice", base ~ "#votes", "votes")]),
+      ("Connect", [("Webhooks", base ~ "/webhooks", "webhooks"), ("Audit log", base ~ "/audit", "audit"), ("Export JSON", "/api/v1/events/" ~ ev.id ~ "/export", "export")]) ] %}
+    <h4>{{ group }}</h4>
+    {% for label, href, key in items %}<a href="{{ href }}" {% if key == here %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+  {% endfor %}
+</nav>
+{%- endmacro %}

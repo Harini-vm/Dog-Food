@@ -1,20 +1,23 @@
 {% extends "base.html" %}{% block title %}Gallery{% endblock %}
 {% block body %}
-<h1>Project gallery</h1>
-<form class="card row" role="search" method="get" action="/projects">
-  <div class="grow"><label for="q">Search</label><input id="q" name="q" value="{{ q }}" placeholder="Title, summary or team"></div>
-  <div class="grow"><label for="ev">Event</label><select id="ev" name="event"><option value="">All events</option>
+<div class="page-head"><div><p class="eyebrow">Public</p><h1>Project gallery</h1></div>
+  <p class="muted fig" style="margin:0">{{ items|length }} project{{ '' if items|length == 1 else 's' }}</p></div>
+<form class="card tight row" role="search" method="get" action="/projects">
+  <div class="grow"><label for="q" style="margin-top:0">Search</label><input id="q" name="q" value="{{ q }}" placeholder="Title, summary or team"></div>
+  <div class="grow"><label for="ev" style="margin-top:0">Event</label><select id="ev" name="event"><option value="">All events</option>
     {% for e in events %}<option value="{{ e.slug }}" {% if e.slug == event %}selected{% endif %}>{{ e.name }}</option>{% endfor %}</select></div>
-  <div class="grow"><label for="tr">Track</label><select id="tr" name="track"><option value="">All tracks</option>
+  <div class="grow"><label for="tr" style="margin-top:0">Track</label><select id="tr" name="track"><option value="">All tracks</option>
     {% for t in tracks %}<option value="{{ t.id }}" {% if t.id == track %}selected{% endif %}>{{ t.name }}</option>{% endfor %}</select></div>
   <button class="btn primary" type="submit">Filter</button>
 </form>
-<p class="muted">{{ items|length }} project{{ '' if items|length == 1 else 's' }}</p>
-<div class="grid">
+<div class="grid" style="margin-top:var(--s5)">
 {% for p in items %}
-  <article class="card"><p style="margin:0">{% if p.track %}<span class="chip brand">{{ p.track }}</span>{% endif %}</p>
-    <h2 style="margin:.4rem 0"><a href="/projects/{{ p.id }}">{{ p.title }}</a></h2>
-    <p class="muted" style="margin:0">{{ p.summary }}</p><small>by {{ p.team }} · {{ p.event }}</small></article>
-{% else %}<p class="card">No projects match.</p>{% endfor %}
+  <article class="card entry">
+    <p class="eyebrow" style="margin:0">{{ p.track or 'No track' }}</p>
+    <h2><a href="/projects/{{ p.id }}">{{ p.title }}</a></h2>
+    <p>{{ p.summary }}</p>
+    <p class="by">{{ p.team }} · {{ p.event }}</p>
+  </article>
+{% else %}<p class="card">No projects match. <a href="/projects">Clear the filters</a></p>{% endfor %}
 </div>
 {% endblock %}

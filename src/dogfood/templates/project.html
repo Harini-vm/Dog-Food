@@ -1,12 +1,11 @@
 {% extends "base.html" %}{% block title %}{{ p.title }}{% endblock %}
 {% block body %}
-<p><a href="/events/{{ p.slug }}">← {{ p.event }}</a></p>
+<p class="crumbs"><a href="/events/{{ p.slug }}">← {{ p.event }}</a></p>
 <div class="split">
-  <article class="card"><p>{% if p.track %}<span class="chip brand">{{ p.track }}</span>{% endif %}
-      {% if p.status != 'submitted' %}<span class="chip warn">{{ p.status }}</span>{% endif %}</p>
+  <article class="card"><p class="eyebrow">{{ p.track or 'No track' }}{% if p.status != 'submitted' %} · <span class="chip warn">{{ p.status }}</span>{% endif %}</p>
     <h1>{{ p.title }}</h1><p>{{ p.summary }}</p>
     {% if p.repo_url %}<a class="btn" href="{{ p.repo_url }}" rel="noopener nofollow ugc">Repository</a>{% endif %}</article>
-  <aside class="card"><h2 style="margin-top:0">Team {{ p.team }}</h2>
+  <aside class="card"><p class="eyebrow">Team</p><h2 style="margin-top:0">{{ p.team }}</h2>
     <ul>{% for m in members %}<li>{{ m.name }}</li>{% endfor %}</ul>
     <small>Submitted {{ p.submitted_at|dt }}</small></aside>
 </div>

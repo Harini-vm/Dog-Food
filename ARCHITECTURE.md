@@ -104,6 +104,28 @@ Rules for the code:
 - **Mail** (voting links) goes to the `outbox` table. No mail server is required. In demo mode the
   link is shown on screen.
 
+## Interface
+
+Server-rendered pages with one stylesheet (`static/site.css`). The visual language comes from the
+judging table:
+
+- **Surfaces:** paper, scorecard and well. Depth is hairline rules only, never shadows.
+- **Colour:** one ink-blue accent for actions. Colour otherwise carries meaning only: stamp red for
+  refused or closed, seal green for locked or verified, highlighter yellow for "look at this".
+- **The Seal** (`templates/_ui.html`) marks everything the system has locked, verified or refused:
+  a closed deadline, published results (with their SHA-256), a signed certificate, an intact audit
+  chain. It shows what the database guarantees.
+- **Fonts:** IBM Plex Sans and Mono are bundled in `static/fonts` (SIL Open Font License), so
+  nothing loads from the internet. Mono with tabular figures is used for every score, rank, hash
+  and id.
+- **Organizer workspace:** a left rail grouped Run · Judge · Publish · Connect. A timeline strip
+  shows which phase the event is in (Submissions → Judging → People's choice → Results).
+- **Judge scorecard:** proportional weight bars per criterion. A small local script
+  (`static/scorecard.js`) shows the live weighted total using the same formula as
+  `results.review_value`. The form works without it.
+- **Accessibility:** light and dark follow the system setting. Targets are at least 44 px, focus is
+  visible, and the layout has no horizontal scroll at 390 px. Reduced motion is respected.
+
 ## What we left out, on purpose
 
 - No ORM, no SPA, no Redis. Each would add a moving part without adding a guarantee.

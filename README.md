@@ -120,5 +120,6 @@ The project was built in stages inside the hackathon window, one commit per stag
 4. Public voting, email links, sealed tallies, comments, rate limits (T3).
 5. API, tokens, webhooks, certificates, widget, import/export (T4).
 6. Documentation, cross-feature tests, cleanup.
+7. Interface: paper-and-ink design system, the Seal, organizer rail and timeline, judge scorecard, bundled IBM Plex fonts (SIL OFL).
 
 License: MIT.

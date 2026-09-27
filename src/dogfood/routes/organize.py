@@ -99,7 +99,7 @@ def dashboard(request: Request, slug: str):
                                         for j in judges], "flags": res["flags"]})
     return page(request, "organize/dashboard.html", ev=ev, counts=counts, judges=judges, flags=flags,
                 organizers=organizers, rubric=rubric, tracks=tracks, scored=scored, res=res, pub=pub,
-                progress=progress, open=is_open(ev), entries=entries, tally=tally, voters=voters)
+                progress=progress, open=is_open(ev), entries=entries, tally=tally, voters=voters, vstate=voting.state(ev))
 
 
 @router.post("/{slug}/settings")

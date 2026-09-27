@@ -1,10 +1,10 @@
-{% extends "base.html" %}{% block title %}{{ ev.name }}{% endblock %}
+{% extends "base.html" %}{% from "_ui.html" import seal %}{% block title %}{{ ev.name }}{% endblock %}
 {% block body %}
-<h1>{{ ev.name }}</h1>
-<p>{% if open %}<span class="chip ok">submissions open</span>{% else %}<span class="chip">submissions closed</span>{% endif %}
-   {% if published %}<span class="chip brand">results published</span>{% endif %}
-   <span class="muted">submissions close {{ ev.closes_at|dt }}</span></p>
-{% if ev.description %}<p>{{ ev.description }}</p>{% endif %}
+<div class="page-head">
+  <div><p class="eyebrow">Event</p><h1>{{ ev.name }}</h1></div>
+  <div>{% if published %}{{ seal("Results published", "") }}{% elif open %}{{ seal("Submissions open until", ev.closes_at|dt('%d %b, %H:%M UTC'), "open") }}{% else %}{{ seal("Submissions closed", ev.closes_at|dt('%d %b, %H:%M UTC'), "stamp") }}{% endif %}</div>
+</div>
+{% if ev.description %}<p style="max-width:44rem">{{ ev.description }}</p>{% endif %}
 <div class="actions">
   <a class="btn primary" href="/projects?event={{ ev.slug }}">Browse the gallery</a>
   {% if published %}<a class="btn" href="/events/{{ ev.slug }}/results">Results</a>{% endif %}
@@ -47,5 +47,5 @@
 <input readonly aria-label="Embed code" value='&lt;iframe src="{{ request.base_url }}embed/{{ ev.slug }}" width="100%" height="480" style="border:0" title="{{ ev.name }} projects"&gt;&lt;/iframe&gt;'>
 
 <h2>Tracks</h2>
-<p>{% for t in tracks %}<a class="chip brand" href="/projects?event={{ ev.slug }}&track={{ t.id }}">{{ t.name }}</a> {% else %}<span class="muted">No tracks.</span>{% endfor %}</p>
+<p>{% for t in tracks %}<a class="chip ink" href="/projects?event={{ ev.slug }}&track={{ t.id }}">{{ t.name }}</a> {% else %}<span class="muted">No tracks.</span>{% endfor %}</p>
 {% endblock %}

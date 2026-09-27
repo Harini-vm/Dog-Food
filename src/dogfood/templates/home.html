@@ -1,11 +1,19 @@
-{% extends "base.html" %}{% block title %}Events{% endblock %}
+{% extends "base.html" %}{% from "_ui.html" import seal %}{% block title %}Events{% endblock %}
 {% block body %}
-<h1>Hackathons, judged fairly</h1>
-<p class="muted">Submit, judge and publish on one self-hosted platform.</p>
+<section class="hero">
+  <p class="eyebrow">Self-hosted hackathon judging</p>
+  <h1>Every score counted once, every rule kept by the database.</h1>
+  <p>Submit, judge and publish in one place. Deadlines, score privacy and published results are enforced below the interface,
+     and every certificate carries a signature anyone can check.</p>
+</section>
+<h2>Events</h2>
 <div class="grid">
 {% for e in events %}
-  <article class="card"><h2 style="margin-top:0"><a href="/events/{{ e.slug }}">{{ e.name }}</a></h2>
-    <p class="muted">{{ e.n }} projects · submissions close {{ e.closes_at|dt }}</p></article>
+  <article class="card entry">
+    <p class="eyebrow" style="margin:0">{{ e.closes_at|dt('%d %b %Y') }}</p>
+    <h3><a href="/events/{{ e.slug }}">{{ e.name }}</a></h3>
+    <p class="by"><span class="fig">{{ e.n }}</span> entries · {% if e.results_published_at %}results published{% else %}submissions close {{ e.closes_at|dt('%d %b, %H:%M') }}{% endif %}</p>
+  </article>
 {% else %}<p class="card">No events yet.</p>{% endfor %}
 </div>
 {% endblock %}

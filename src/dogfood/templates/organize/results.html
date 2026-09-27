@@ -1,17 +1,22 @@
-{% extends "base.html" %}{% block title %}Results preview · {{ ev.name }}{% endblock %}
+{% extends "base.html" %}{% from "_ui.html" import seal, rail %}{% block title %}Results preview · {{ ev.name }}{% endblock %}
 {% block body %}
-<p><a href="/organize/{{ ev.slug }}#publish">← {{ ev.name }}</a></p>
+<div class="workspace">
+{{ rail(ev, "results") }}
+<div class="work">
+<p class="eyebrow">{{ ev.name }}</p>
 <h1>Results preview</h1>
 <p class="muted">Private to organizers. Method <code>{{ res.method }}</code> · panel mean {{ res.panel.mean }}, spread {{ res.panel.sd }}, {{ res.panel.reviews }} reviews.
-  {% if pub %}Published version {{ pub.version }} is frozen; this preview is live.{% endif %}</p>
-{% if res.flags %}<div class="note warn"><strong>{{ res.flags|length }} flag(s).</strong>
-  <ul>{% for f in res.flags %}<li>{{ f.kind|replace('_',' ') }}: {{ f.name or f.title }}, {{ f.detail }}</li>{% endfor %}</ul></div>{% endif %}
-<div class="card scroll"><table>
+  </p>
+{% if pub %}<p>{{ seal("Published v" ~ pub.version ~ " is frozen", pub.body_hash[:16]) }} <span class="muted">This preview stays live.</span></p>{% endif %}
+{% if res.flags %}<div class="card" style="margin-bottom:var(--s5)"><details><summary>{{ res.flags|length }} flag{{ '' if res.flags|length == 1 else 's' }} to review before publishing</summary>
+  <ul class="flags">{% for f in res.flags %}<li><span class="chip {{ 'bad' if f.kind in ('flat_judge','straight_line') else 'warn' }}">{{ f.kind|replace('_',' ') }}</span>
+    <span><strong>{{ f.name or f.title }}</strong> <span class="muted">{{ f.detail }}</span></span></li>{% endfor %}</ul></details></div>{% endif %}
+<div class="card scroll"><table class="standings">
   <thead><tr><th scope="col">Rank</th><th scope="col">Project</th><th scope="col">Track (rank)</th><th scope="col" class="num">Score</th>
     <th scope="col" class="num">Raw average</th><th scope="col" class="num">Raw rank</th><th scope="col" class="num">Moved</th><th scope="col" class="num">Reviews</th></tr></thead>
-  <tbody>{% for r in res.ranking %}<tr><td>{{ r.rank }}</td><td>{{ r.title }}<br><small>{{ r.team }}</small></td>
+  <tbody>{% for r in res.ranking %}<tr class="{{ 'podium' if r.rank <= 3 }}"><td class="place">{{ r.rank }}</td><td>{{ r.title }}<br><small>{{ r.team }}</small></td>
     <td>{{ r.track or '—' }} ({{ r.track_rank }})</td><td class="num">{{ '%.2f'|format(r.score) }}</td><td class="num">{{ '%.2f'|format(r.raw) }}</td>
-    <td class="num">{{ r.raw_rank }}</td><td class="num">{% if r.moved > 0 %}▲{{ r.moved }}{% elif r.moved < 0 %}▼{{ -r.moved }}{% else %}·{% endif %}</td>
+    <td class="num">{{ r.raw_rank }}</td><td class="num">{% if r.moved > 0 %}<span class="move-up" aria-label="up {{ r.moved }}">▲{{ r.moved }}</span>{% elif r.moved < 0 %}<span class="move-down" aria-label="down {{ -r.moved }}">▼{{ -r.moved }}</span>{% else %}<span class="muted">·</span>{% endif %}</td>
     <td class="num">{{ r.reviews }}{% if r.pending %} <small>(+{{ r.pending }} pending)</small>{% endif %}</td></tr>{% endfor %}</tbody>
 </table></div>
 {% if res.unranked %}<p class="muted">Unranked (no reviews): {% for u in res.unranked %}{{ u.title }}{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
@@ -22,4 +27,5 @@
   <tbody>{% for j in res.judges %}<tr><td>{{ j.name }}</td><td class="num">{{ j.reviews }}</td><td class="num">{{ j.mean }}</td><td class="num">{{ j.sd }}</td>
     <td class="num">{{ '%+.2f'|format(j.shift) }}</td><td>{{ (j.flag or '')|replace('_',' ') }}</td></tr>{% endfor %}</tbody>
 </table></div>
+</div></div>
 {% endblock %}

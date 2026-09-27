@@ -1,11 +1,15 @@
-{% extends "base.html" %}{% block title %}Certificates · {{ ev.name }}{% endblock %}
+{% extends "base.html" %}{% from "_ui.html" import seal, rail %}{% block title %}Certificates · {{ ev.name }}{% endblock %}
 {% block body %}
-<p><a href="/organize/{{ ev.slug }}#publish">← {{ ev.name }}</a></p>
+<div class="workspace">
+{{ rail(ev, "certificates") }}
+<div class="work">
+<p class="eyebrow">{{ ev.name }}</p>
 <h1>Certificates ({{ rows|length }})</h1>
 <p class="muted">Each certificate is a signed record. Anyone can verify it with our public key, even offline.</p>
 <div class="card scroll"><table><thead><tr><th scope="col">Recipient</th><th scope="col">Kind</th><th scope="col">Project</th><th scope="col"><span class="visually-hidden">Open</span></th></tr></thead>
 <tbody>{% for c in rows %}<tr><td>{{ c.recipient }}<br><small>{{ c.team }}</small></td>
-  <td>{% if c.kind == 'winner' %}<span class="chip brand">place {{ c.place }}</span>{% elif c.kind == 'track_winner' %}<span class="chip ok">{{ c.track }} winner</span>{% else %}<span class="chip">participant</span>{% endif %}</td>
+  <td>{% if c.kind == 'winner' %}<span class="chip ink">place {{ c.place }}</span>{% elif c.kind == 'track_winner' %}<span class="chip ok">{{ c.track }} winner</span>{% else %}<span class="chip">participant</span>{% endif %}</td>
   <td>{{ c.title }}</td><td><a class="btn" href="/certificates/{{ c.id }}">Open</a></td></tr>
 {% else %}<tr><td colspan="4" class="muted">None issued yet. Publish results, then issue certificates from the dashboard.</td></tr>{% endfor %}</tbody></table></div>
+</div></div>
 {% endblock %}

@@ -1,6 +1,9 @@
-{% extends "base.html" %}{% block title %}Assignments · {{ ev.name }}{% endblock %}
+{% extends "base.html" %}{% from "_ui.html" import seal, rail %}{% block title %}Assignments · {{ ev.name }}{% endblock %}
 {% block body %}
-<p><a href="/organize/{{ ev.slug }}#judging">← {{ ev.name }}</a></p>
+<div class="workspace">
+{{ rail(ev, "assignments") }}
+<div class="work">
+<p class="eyebrow">{{ ev.name }}</p>
 <h1>Assignments ({{ rows|length }})</h1>
 <form class="card row" method="post" action="/organize/{{ ev.slug }}/assignments"><input type="hidden" name="csrf" value="{{ csrf }}">
   <div class="grow"><label for="j">Judge</label><select id="j" name="judge_id" required>{% for j in judges %}<option value="{{ j.id }}">{{ j.name }}</option>{% endfor %}</select></div>
@@ -16,4 +19,5 @@
     <td>{% if not r.scored %}<form method="post" action="/organize/{{ ev.slug }}/assignments/{{ r.id }}/remove"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn">Unassign</button></form>{% endif %}</td></tr>
   {% endfor %}</tbody>
 </table></div>
+</div></div>
 {% endblock %}

@@ -1,16 +1,16 @@
-{% extends "base.html" %}{% block title %}Results · {{ ev.name }}{% endblock %}
+{% extends "base.html" %}{% from "_ui.html" import seal %}{% block title %}Results · {{ ev.name }}{% endblock %}
 {% block body %}
-<p><a href="/events/{{ ev.slug }}">← {{ ev.name }}</a></p>
-<h1>Results</h1>
+<p class="crumbs"><a href="/events/{{ ev.slug }}">← {{ ev.name }}</a></p>
+<div class="page-head"><div><p class="eyebrow">{{ ev.name }}</p><h1>Final standings</h1></div>
+  {% if snap %}<div>{{ seal("Published v" ~ snap.version, snap.body_hash[:16], title="SHA-256 " ~ snap.body_hash) }}</div>{% endif %}</div>
 {% if not snap %}<p class="card">Results for {{ ev.name }} are not published yet.</p>
 {% else %}
 {% set b = snap.body %}
-<p class="muted">Published {{ snap.published_at|dt }} · version {{ snap.version }} ·
-  <a href="/api/v1/events/{{ ev.slug }}/results">JSON</a> · sha256 <code>{{ snap.body_hash[:16] }}…</code></p>
+<p class="muted">Published {{ snap.published_at|dt }}. This page shows a frozen snapshot: <a href="/api/v1/events/{{ ev.slug }}/results">download it as JSON</a> and its SHA-256 will match the seal above.</p>
 <p class="muted">Scores are out of 100 after correcting for strict and lenient judges. <a href="#how">How we score</a></p>
-<div class="card scroll"><table>
-  <thead><tr><th scope="col">Rank</th><th scope="col">Project</th><th scope="col">Team</th><th scope="col">Track</th><th scope="col" class="num">Score</th><th scope="col" class="num">Reviews</th></tr></thead>
-  <tbody>{% for r in b.ranking %}<tr {% if r.rank <= 3 %}class="top"{% endif %}><td>{{ r.rank }}</td>
+<div class="card scroll"><table class="standings">
+  <thead><tr><th scope="col">Place</th><th scope="col">Project</th><th scope="col">Team</th><th scope="col">Track</th><th scope="col" class="num">Score</th><th scope="col" class="num">Reviews</th></tr></thead>
+  <tbody>{% for r in b.ranking %}<tr class="{{ 'podium' if r.rank <= 3 }}"><td class="place">{{ r.rank }}</td>
     <td><a href="/projects/{{ r.project_id }}">{{ r.title }}</a></td><td>{{ r.team }}</td><td>{{ r.track or '—' }}</td>
     <td class="num">{{ '%.2f'|format(r.score) }}</td><td class="num">{{ r.reviews }}</td></tr>{% endfor %}</tbody>
 </table></div>
